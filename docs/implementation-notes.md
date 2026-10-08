@@ -52,8 +52,6 @@ Where the first implementation departs from `design.md`, and why. The decision l
 
 - **Human checks.** No golden item is hand-checked yet (`checked_by` is null on all 60), and
   there is no human spot-check of 20 answers. All metrics and the CI baseline are provisional.
-- **CI on GitHub.** The workflow has never run: the repository has no commits and no remote.
-  Everything it runs passes locally through `scripts/check.ps1`.
 - **MCP clients.** The server was not tried from Claude Desktop or the MCP Inspector. The stdio
   entry point is exercised by `scripts/mcp_smoke.py`, which checks one result per tool.
 - **Reranker.** Not implemented. Design open question 3 defaults to off until measured.

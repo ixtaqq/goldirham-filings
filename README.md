@@ -118,8 +118,8 @@ Source files: `benchmarks/retrieval-2026-10-08.json`,
 **CI gate.** The fixture corpus is 11 filings (1,584 chunks) and 36 golden questions, with
 precomputed vectors. The baseline is Recall@10 0.741 and MRR 0.462. With vector search
 dropped, the gate measured Recall@10 0.662 and MRR 0.361 and failed.
-`tests/test_gate.py` checks that this degradation fails the gate. It has run locally only;
-GitHub Actions has not run because the repository is not pushed yet.
+`tests/test_gate.py` checks that this degradation fails the gate, and runs in GitHub Actions on
+every push.
 
 ## Run it
 
