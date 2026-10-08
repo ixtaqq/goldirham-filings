@@ -1,0 +1,338 @@
+"""Read side of the index: hybrid search, passage lookup, filing comparison, coverage."""
+
+import re
+from collections.abc import Sequence
+from datetime import date
+from typing import Any, Literal
+
+import psycopg
+from pydantic import BaseModel
+
+from goldirham_filings.edgar import Form
+from goldirham_filings.embed import Embedder
+from goldirham_filings.scope import parse_references, resolve_accessions
+
+SearchMode = Literal["hybrid", "keyword", "vector"]
+RRF_K = 60
+
+PASSAGE_COLUMNS = """
+    c.id, co.ticker, co.name, f.form, f.accession, f.period_end, f.filed_at, s.item, s.title,
+    c.start_char, c.end_char, c.text, f.source_url
+"""
+PASSAGE_FROM = """
+    chunks c
+    JOIN sections s ON s.id = c.section_id
+    JOIN filings f ON f.accession = s.accession
+    JOIN companies co ON co.cik = f.cik
+"""
+
+
+class Filters(BaseModel):
+    tickers: list[str] | None = None
+    forms: list[Form] | None = None
+    period_from: date | None = None
+    period_to: date | None = None
+    sections: list[str] | None = None
+    accessions: list[str] | None = None
+
+
+class Passage(BaseModel):
+    chunk_id: int
+    ticker: str
+    company: str
+    form: str
+    accession: str
+    period_end: date | None
+    filed_at: date
+    section: str
+    section_title: str
+    start_char: int
+    end_char: int
+    text: str
+    source_url: str
+    score: float = 0.0
+    similarity: float | None = None
+
+
+def reciprocal_rank_fusion(rankings: Sequence[Sequence[int]], k: int = RRF_K) -> list[int]:
+    scores: dict[int, float] = {}
+    for ranking in rankings:
+        for rank, item in enumerate(ranking, start=1):
+            scores[item] = scores.get(item, 0.0) + 1.0 / (k + rank)
+    return sorted(scores, key=lambda item: (-scores[item], item))
+
+
+def keyword_tsquery(text: str) -> str | None:
+    """OR of the query's words. websearch_to_tsquery ANDs every word, which finds nothing
+    for most natural-language questions. ts_rank (not ts_rank_cd) ranks the OR matches: on the
+    golden set it lifted keyword Recall@10 from 0.58 to 0.68 and hybrid MRR from 0.41 to 0.48."""
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    return " | ".join(dict.fromkeys(words)) or None
+
+
+def _where(filters: Filters) -> tuple[str, list[Any]]:
+    clauses: list[str] = []
+    params: list[Any] = []
+    for value, clause in (
+        (filters.tickers and [t.upper() for t in filters.tickers], "co.ticker = ANY(%s)"),
+        (filters.forms, "f.form = ANY(%s)"),
+        (filters.period_from, "f.period_end >= %s"),
+        (filters.period_to, "f.period_end <= %s"),
+        (filters.sections and [s.upper() for s in filters.sections], "upper(s.item) = ANY(%s)"),
+        (filters.accessions, "f.accession = ANY(%s)"),
+    ):
+        if value:
+            clauses.append(clause)
+            params.append(value)
+    return (" AND ".join(clauses) or "TRUE"), params
+
+
+def _passage(row: Sequence[Any], score: float = 0.0) -> Passage:
+    keys = ("chunk_id", "ticker", "company", "form", "accession", "period_end", "filed_at",
+            "section", "section_title", "start_char", "end_char", "text", "source_url")  # fmt: skip
+    return Passage(**dict(zip(keys, row, strict=True)), score=score)
+
+
+class Retriever:
+    def __init__(
+        self,
+        conn: psycopg.Connection[tuple[Any, ...]],
+        embedder: Embedder,
+        candidates: int = 50,
+        mode: SearchMode = "hybrid",
+        scope_from_query: bool = True,
+    ) -> None:
+        self.conn = conn
+        self.embedder = embedder
+        self.candidates = candidates
+        self.mode = mode
+        self.scope_from_query = scope_from_query
+
+    def scoped(self, query: str, filters: Filters) -> Filters | None:
+        """Restrict to the filings the query names ("most recent 10-Q", "fiscal 2025 10-K").
+
+        Returns None when the query names an explicit period or fiscal year that no indexed
+        filing has: answering from other periods would be answering a different question.
+        Looser references that match nothing leave the filters unchanged."""
+        if not self.scope_from_query or filters.accessions:
+            return filters
+        refs = parse_references(query)
+        if not refs:
+            return filters
+        accessions = resolve_accessions(self.conn, refs, filters.tickers, filters.forms,
+                                        filters.period_from, filters.period_to)  # fmt: skip
+        if accessions:
+            return filters.model_copy(update={"accessions": accessions})
+        if any(r.period_end or r.fiscal_years for r in refs):
+            return None
+        return filters
+
+    def keyword_ids(self, query: str, filters: Filters) -> list[int]:
+        tsquery = keyword_tsquery(query)
+        if tsquery is None:
+            return []
+        where, params = _where(filters)
+        rows = self.conn.execute(
+            f"""
+            SELECT c.id FROM {PASSAGE_FROM}, to_tsquery('english', %s) q
+            WHERE c.tsv @@ q AND {where}
+            ORDER BY ts_rank(c.tsv, q) DESC, c.id LIMIT %s
+            """,
+            [tsquery, *params, self.candidates],
+        ).fetchall()
+        return [r[0] for r in rows]
+
+    def vector_hits(self, query: str, filters: Filters) -> dict[int, float]:
+        """Chunk id -> cosine similarity, best first."""
+        where, params = _where(filters)
+        rows = self.conn.execute(
+            f"""
+            SELECT c.id, 1 - (e.embedding <=> %s) FROM {PASSAGE_FROM}
+            JOIN embeddings e ON e.chunk_id = c.id AND e.model = %s
+            WHERE {where}
+            ORDER BY 2 DESC, c.id LIMIT %s
+            """,
+            [self.embedder.embed_query(query), self.embedder.model, *params, self.candidates],
+        ).fetchall()
+        return {r[0]: float(r[1]) for r in rows}
+
+    def search(self, query: str, filters: Filters | None = None, k: int = 8) -> list[Passage]:
+        """Top k by reciprocal rank fusion. `similarity` is set for chunks the vector search
+        found; the best similarity is the abstention signal. Empty when the query names a
+        period that is not indexed."""
+        scoped = self.scoped(query, filters or Filters())
+        if scoped is None:
+            return []
+        filters = scoped
+        rankings: list[list[int]] = []
+        similarities: dict[int, float] = {}
+        if self.mode in ("hybrid", "keyword"):
+            rankings.append(self.keyword_ids(query, filters))
+        if self.mode in ("hybrid", "vector"):
+            similarities = self.vector_hits(query, filters)
+            rankings.append(list(similarities))
+        ids = reciprocal_rank_fusion(rankings)[:k]
+        by_id = {p.chunk_id: p for p in passages_by_id(self.conn, ids)}
+        return [
+            by_id[i].model_copy(
+                update={"score": round(1.0 / (RRF_K + rank), 6), "similarity": similarities.get(i)}
+            )
+            for rank, i in enumerate(ids, start=1)
+        ]
+
+
+def passages_by_id(conn: psycopg.Connection[tuple[Any, ...]], ids: list[int]) -> list[Passage]:
+    rows = conn.execute(
+        f"SELECT {PASSAGE_COLUMNS} FROM {PASSAGE_FROM} WHERE c.id = ANY(%s)", [ids]
+    ).fetchall()
+    return [_passage(r) for r in rows]
+
+
+class PassageWithContext(BaseModel):
+    passage: Passage
+    before: str
+    after: str
+
+
+def get_passage(
+    conn: psycopg.Connection[tuple[Any, ...]],
+    chunk_id: int | None = None,
+    accession: str | None = None,
+    section: str | None = None,
+    start_char: int | None = None,
+    end_char: int | None = None,
+    context_chars: int = 600,
+) -> PassageWithContext | None:
+    """A chunk by id, or an exact span of one section: offsets index into the section text,
+    and every section starts at 0, so accession, section and start_char are all required.
+    Without end_char the span runs to the end of the chunk containing start_char."""
+    params: list[Any]
+    if chunk_id is not None:
+        where, params = "c.id = %s", [chunk_id]
+    elif accession is not None and section is not None and start_char is not None:
+        if start_char < 0 or (end_char is not None and end_char <= start_char):
+            raise ValueError("need 0 <= start_char < end_char")
+        where = (
+            "f.accession = %s AND upper(s.item) = upper(%s)"
+            " AND c.start_char <= %s AND c.end_char > %s"
+        )
+        params = [accession, section, start_char, start_char]
+    else:
+        raise ValueError("give chunk_id, or accession, section and start_char")
+    row = conn.execute(
+        f"SELECT {PASSAGE_COLUMNS}, s.text FROM {PASSAGE_FROM} WHERE {where}"
+        " ORDER BY c.start_char LIMIT 1",
+        params,
+    ).fetchone()
+    if row is None:
+        return None
+    passage, section_text = _passage(row[:-1]), str(row[-1])
+    if chunk_id is None and start_char is not None:
+        end = min(end_char if end_char is not None else passage.end_char, len(section_text))
+        passage = passage.model_copy(
+            update={"start_char": start_char, "end_char": end, "text": section_text[start_char:end]}
+        )
+    return PassageWithContext(
+        passage=passage,
+        before=section_text[max(0, passage.start_char - context_chars) : passage.start_char],
+        after=section_text[passage.end_char : passage.end_char + context_chars],
+    )
+
+
+class FilingSummary(BaseModel):
+    accession: str
+    form: str
+    period_end: date | None
+    filed_at: date
+    source_url: str
+
+
+def latest_filings(
+    conn: psycopg.Connection[tuple[Any, ...]], ticker: str, form: Form, limit: int = 2
+) -> list[FilingSummary]:
+    rows = conn.execute(
+        """
+        SELECT f.accession, f.form, f.period_end, f.filed_at, f.source_url
+        FROM filings f JOIN companies co ON co.cik = f.cik
+        WHERE co.ticker = %s AND f.form = %s
+        ORDER BY f.period_end DESC NULLS LAST, f.filed_at DESC LIMIT %s
+        """,
+        (ticker.upper(), form, limit),
+    ).fetchall()
+    return [
+        FilingSummary(accession=r[0], form=r[1], period_end=r[2], filed_at=r[3], source_url=r[4])
+        for r in rows
+    ]
+
+
+class CoverageRow(BaseModel):
+    ticker: str
+    company: str
+    filer_type: str
+    forms: dict[str, int]
+    earliest_period: date | None
+    latest_period: date | None
+
+
+def coverage(conn: psycopg.Connection[tuple[Any, ...]]) -> list[CoverageRow]:
+    rows = conn.execute(
+        """
+        SELECT co.ticker, co.name, co.filer_type,
+               count(*) FILTER (WHERE f.form = '10-K'), count(*) FILTER (WHERE f.form = '10-Q'),
+               min(f.period_end), max(f.period_end)
+        FROM companies co LEFT JOIN filings f ON f.cik = co.cik
+        GROUP BY co.ticker, co.name, co.filer_type ORDER BY co.ticker
+        """
+    ).fetchall()
+    return [
+        CoverageRow(ticker=r[0], company=r[1], filer_type=r[2],
+                    forms={"10-K": r[3], "10-Q": r[4]}, earliest_period=r[5], latest_period=r[6])
+        for r in rows
+    ]  # fmt: skip
+
+
+class ChangedPassage(BaseModel):
+    newer: Passage
+    closest_older: Passage | None
+    similarity: float
+
+
+def changed_passages(
+    conn: psycopg.Connection[tuple[Any, ...]],
+    model: str,
+    older_accession: str,
+    newer_accession: str,
+    section: str,
+    k: int,
+) -> list[ChangedPassage]:
+    """Newer chunks whose closest older chunk in the same section is least similar:
+    new or rewritten language. Uses the stored embeddings, so no model call."""
+    rows = conn.execute(
+        """
+        WITH side AS (
+            SELECT c.id, s.accession, e.embedding FROM chunks c
+            JOIN sections s ON s.id = c.section_id
+            JOIN embeddings e ON e.chunk_id = c.id AND e.model = %(model)s
+            WHERE upper(s.item) = upper(%(section)s) AND s.accession IN (%(older)s, %(newer)s)
+        )
+        SELECT n.id, best.id, best.similarity FROM side n
+        LEFT JOIN LATERAL (
+            SELECT o.id, 1 - (o.embedding <=> n.embedding) AS similarity FROM side o
+            WHERE o.accession = %(older)s ORDER BY o.embedding <=> n.embedding LIMIT 1
+        ) best ON TRUE
+        WHERE n.accession = %(newer)s
+        ORDER BY best.similarity ASC NULLS FIRST, n.id LIMIT %(k)s
+        """,
+        {"model": model, "section": section.upper(), "older": older_accession,
+         "newer": newer_accession, "k": k},
+    ).fetchall()  # fmt: skip
+    ids = [r[0] for r in rows] + [r[1] for r in rows if r[1] is not None]
+    by_id = {p.chunk_id: p for p in passages_by_id(conn, ids)}
+    return [
+        ChangedPassage(
+            newer=by_id[newer_id],
+            closest_older=by_id.get(older_id) if older_id is not None else None,
+            similarity=round(float(similarity), 4) if similarity is not None else 0.0,
+        )
+        for newer_id, older_id, similarity in rows
+    ]

@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "goldirham-filings": {
+      "command": "E:\Workspace\Project\services\goldirham-filings\.venv\Scripts\goldirham-filings-mcp.exe"
+    }
+  }
+}

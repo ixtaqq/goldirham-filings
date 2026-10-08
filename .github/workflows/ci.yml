@@ -1,0 +1,49 @@
+# Same steps as scripts/check.ps1. No GPU and no Ollama here: the retrieval gate runs on the
+# committed fixture corpus with precomputed chunk and question vectors.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: filings
+          POSTGRES_PASSWORD: filings
+          POSTGRES_DB: filings_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U filings" --health-interval 2s --health-timeout 3s
+          --health-retries 30
+
+    env:
+      DATABASE_URL: postgresql://filings:filings@localhost:5432/filings_test
+      TEST_DATABASE_URL: postgresql://filings:filings@localhost:5432/filings_test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Typecheck
+        run: uv run mypy src tests scripts
+      - name: Load fixture corpus
+        run: uv run alembic upgrade head && uv run filings fixtures load
+      - name: Tests
+        run: uv run pytest -q
+      - name: Retrieval gate
+        run: uv run filings eval gate
