@@ -34,6 +34,10 @@ golden set ─► eval harness ─► CI retrieval gate + dated reports in bench
 - **Retrieve.** Postgres full-text search (`ts_rank` over the question's words) and cosine
   vector search, 50 candidates each, merged with reciprocal rank fusion. Filters: ticker,
   form, period, section, accession.
+- **Balance.** When a question names several filings, each filing is searched separately
+  and the results are interleaved, so one long filing can't crowd out the other.
+- **Prefer recent.** When neither the question nor the caller names a filing or period, the
+  ranking leans mildly toward each company's newer filings.
 - **Answer.** `qwen3:8b` gets numbered passages and must return JSON in which every sentence
   cites passages. Code then drops citations to passages it never supplied, removes uncited
   sentences, and flags any number missing from the cited passages. It abstains when the model
@@ -62,64 +66,79 @@ are searchable as whole documents without section labels.
 
 ## Results
 
-Measured on 2026-10-08 on the 60-item golden set: 51 answerable and 9 unanswerable questions.
-Source files: `benchmarks/retrieval-2026-10-08.json`,
-`benchmarks/retrieval-experiments-2026-10-08.json` and `benchmarks/eval-2026-10-08.json`.
+The golden set is split into a **dev set** used for tuning and a **held-out test set** used only
+to report results. The split is stratified by question type with a fixed seed
+(`evals/split.json`): 40 original dev questions, 20 test questions, plus 8 dev-only recency
+questions added later. Every number below comes from the named files in `benchmarks/`.
 
-**Read these numbers with two caveats.**
+**Read these numbers with three caveats.**
 - No golden item has been hand-checked yet. Items were drafted from filing text by an agent,
   and code checks that every gold quote matches the filing exactly.
-- Query scoping and keyword ranking were tuned on this same set. Its questions use the
-  phrasings the scope parser handles ("most recent 10-Q", "fiscal 2026 10-K", "quarter ended
-  …") and always name tickers. Expect lower numbers on questions written by someone else.
+- Query scoping and keyword ranking were built before the split, on all 60 questions. Their
+  effect on the test numbers is therefore not a clean held-out measurement.
+- The test set ran four times, all logged in `docs/decisions.tsv`. The third and fourth runs
+  came after looking at one test failure (an unanswerable question that got answered), so
+  the test set is no longer fully unseen for the decision to revert the partial-answer rule.
+  With 20 questions, one item moves a rate by 5 to 33 points.
 
-**Retrieval** (51 answerable items; a hit is a retrieved chunk overlapping a gold sentence)
+**Baseline vs final.** Baseline is the 2026-10-08 code (`*-2026-10-08-baseline.json`). Final
+is the shipped code (`eval-*-2026-10-09-final2.json`). Dev numbers are on the original 40
+dev questions (`compare-final2-dev40.json`), and test numbers on all 20
+(`compare-final2-test.json`).
 
-| Configuration | Recall@5 | Recall@10 | MRR |
-| --- | --- | --- | --- |
-| Hybrid, nomic-embed-text, query scoping (shipped) | 0.59 | 0.75 | 0.48 |
-| Same, without query scoping | 0.38 | 0.45 | 0.31 |
-| Same, oracle filter to the gold filings (upper bound for scoping) | 0.60 | 0.76 | 0.48 |
-| Hybrid, mxbai-embed-large, query scoping | 0.60 | 0.75 | 0.47 |
-| Vector only, nomic-embed-text | 0.49 | 0.66 | 0.40 |
-| Vector only, mxbai-embed-large | 0.54 | 0.73 | 0.43 |
-| Keyword only | 0.51 | 0.68 | 0.38 |
+| Metric | Dev baseline | Dev final | Test baseline | Test final | Proposed target |
+| --- | --- | --- | --- | --- | --- |
+| Recall@10 | 0.716 | 0.755 | 0.814 | 0.784 | ≥ 0.85 |
+| MRR | 0.468 | 0.485 | 0.498 | 0.502 | |
+| Unanswerable declined | 6/6 | 6/6 | 3/3 | 3/3 | ≥ 0.80 |
+| Wrongly declines answerable | 0.353 | 0.324 | 0.176 | 0.176 | ≤ 0.10 |
+| Citation precision | 0.625 | 0.696 | 0.784 | 0.774 | ≥ 0.90 |
+| Answers with unsupported numbers | 0 | 2 | 1 | 1 | 0 |
+| Judge agreement (local 8B, lenient) | 0.529 | 0.618 | 0.647 | 0.588 | indicative only |
 
-- Query scoping is the largest gain, and it comes close to the oracle on this set.
-- mxbai is the better model for vector-only search. In hybrid mode the two tie.
-- nomic was kept because it embeds about twice as fast and has smaller vectors.
+- **Gains on dev don't carry over to test.** Dev improves on recall, MRR, wrong declines,
+  citation precision and the judge.
+- **Test is flat or slightly worse.**
+  - Wrong declines and unanswerable declines are unchanged.
+  - Recall@10 fell because one comparison span dropped out of the top 10.
+  - Recall@5 and MRR rose a little.
+  - Citation precision and the judge fell by one or two items.
+- **What this means.** The gains rest on 40 dev questions, and the test set is too small to
+  confirm or rule them out.
+- **Recency questions.** On the 8 dev-only recency questions, which name no filing, the
+  recency preference raised Recall@10 from 0.50 to 0.625 (`compare-recency-retrieval-dev.json`).
+- **Unsupported numbers.** The flagged numbers are figures the model computed itself (a
+  revenue difference, a sum). The check is designed to catch exactly these.
 
-**Answers** (qwen3:8b, k = 8 passages)
+**What changed, measured on dev** (decision log: `docs/decisions.tsv`)
 
-| Metric | Result | Proposed target |
+| Change | Result | Evidence |
 | --- | --- | --- |
-| Abstention accuracy (unanswerable) | 1.00 (9/9) | ≥ 0.80 |
-| False abstention (answerable) | 0.29 (15/51) | ≤ 0.10 |
-| Citation precision | 0.69 | ≥ 0.90 |
-| Answers with a number missing from cited passages | 1 (3 numbers) | 0 |
-| Answer agreement, local 8B judge | 0.57 | indicative only |
+| Retrieve top passages per filing when a question names several | Kept: Recall@10 0.716 → 0.740, MRR 0.468 → 0.485 | `retrieval-dev-2026-10-08-balance-filings.json` |
+| Prompt: cite only passages that directly state the fact | Kept: citations per answer 2.05 → 1.57, citation precision 0.623 → 0.637 | `compare-cite-rule-dev40.json` |
+| Mild recency preference when no filing or period is named | Kept: recency questions Recall@10 0.50 → 0.625, original dev unchanged or better | `compare-recency-retrieval-dev.json` |
+| Prompt: don't calculate new figures | Kept: answers with unsupported numbers 3 → 1 | `compare-no-arithmetic-dev48.json` |
+| Drop exact repeated sentences from answers | Kept: removes duplicated sentences seen in model output | `tests/test_answer.py` |
+| Cross-encoder reranker (bge-reranker-base, CPU) | Rejected: MRR +0.5 points (bar +3), Recall@10 0.740 → 0.677, 3.5 s per query | `rerank-dev-2026-10-08-bge-reranker-base.json` |
+| "Changed passages" as an extra retrieval channel | Not built: can't compare a 10-K with a 10-Q section | `changed-dev-2026-10-08.json` |
+| Retrieve per company for multi-company questions that name no filing | Reverted: MRR 0.485 → 0.470; only one dev question exercises it | `retrieval-dev-2026-10-08-balance-tickers.json` |
+| Prompt: answer the covered parts of multi-part questions | Reverted: dev wrong declines 0.324 → 0.235, but test unanswerable fell to 2/3, below the floor | `compare-partial-answers-dev40.json`, `compare-final-test.json` |
+| Prompt: "related facts are not an answer" | Reverted: didn't restore test unanswerable (still 2/3) | `compare-decline-rule-test.json` |
 
-- **False abstention.** In 11 of the 15 cases, none of the 8 passages the model saw contained
-  a gold sentence, so abstaining matched the evidence. The other 4 are model misses.
-- **Comparison questions** cause most of the retrieval misses. Both filings are retrieved, but
-  the sentences that changed rank low inside each filing.
-- **Abstention.** Unanswerable questions went from 8/9 to 9/9 after one rule change: a question
-  that names a period with no indexed filing now gets no passages. A perfect abstention rate
-  next to a 29% false-abstention rate means the system leans toward declining.
-- **Citation precision.** Four answers cited no gold passage at all (lookup-005, lookup-009,
-  risk-005, comparison-003). Three cross-company answers cited many non-gold passages.
-- **Number check.** It compares normalized numbers ("60.0" equals "60") and ignores
-  source names such as "fiscal 2026" and product codes such as "MI308". An earlier, stricter
-  version flagged 5 answers on the same model output. The one answer still flagged
-  (comparison-009) converts units and computes a difference, which the check is meant to catch.
-- **Judge.** The local judge is lenient. It marked risk-005 correct even though the answer
-  cited no gold passage. Treat its rate as a rough signal until a human spot-check exists.
+**Where the remaining errors come from.**
+- **Comparisons.** Comparison questions are still the weakest type (dev Recall@10 0.50). The
+  changed sentences often rank low inside each filing (`ranks-dev-2026-10-08-baseline.json`).
+- **Answerable declines.** With the partial-answer rule reverted, the model declines
+  multi-part questions when it can't answer every part. On dev, 6 of the 11 wrong declines
+  had a gold passage among the 8 the model saw (`compare-final2-dev40.json`).
+- **Citation precision.** It is held down partly by the metric itself. Each item lists one
+  gold span, so a citation of the same fact stated elsewhere in the filing counts as wrong.
 
-**CI gate.** The fixture corpus is 11 filings (1,584 chunks) and 36 golden questions, with
-precomputed vectors. The baseline is Recall@10 0.741 and MRR 0.462. With vector search
-dropped, the gate measured Recall@10 0.662 and MRR 0.361 and failed.
-`tests/test_gate.py` checks that this degradation fails the gate, and runs in GitHub Actions on
-every push.
+**CI gate.** The fixture corpus is 11 filings (1,584 chunks) and 39 golden questions, with
+precomputed vectors. The baseline is Recall@10 0.769 and MRR 0.473 (`evals/baseline.json`).
+With vector search dropped, the gate measured Recall@10 0.654 and MRR 0.367 and failed.
+`tests/test_gate.py` checks this in CI. GitHub Actions has run once, on the initial push
+(2026-10-08), and passed. Later changes are local and not pushed yet.
 
 ## Run it
 

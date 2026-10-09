@@ -1,0 +1,212 @@
+{
+  "depth": 50,
+  "rows": [
+    {
+      "item_id": "comparison-001",
+      "type": "comparison",
+      "accession": "0001628280-25-056742",
+      "section": "1A",
+      "rank_combined": 42,
+      "rank_in_own_filing": 19,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "comparison-001",
+      "type": "comparison",
+      "accession": "0001628280-26-058235",
+      "section": "II-1A",
+      "rank_combined": 10,
+      "rank_in_own_filing": 3,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "comparison-002",
+      "type": "comparison",
+      "accession": "0000002488-26-000018",
+      "section": "7",
+      "rank_combined": 6,
+      "rank_in_own_filing": 5,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "comparison-002",
+      "type": "comparison",
+      "accession": "0000002488-26-000123",
+      "section": "I-2",
+      "rank_combined": 3,
+      "rank_in_own_filing": 1,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "comparison-003",
+      "type": "comparison",
+      "accession": "0001628280-25-056742",
+      "section": "7",
+      "rank_combined": 9,
+      "rank_in_own_filing": 7,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "comparison-003",
+      "type": "comparison",
+      "accession": "0001628280-26-058235",
+      "section": "I-2",
+      "rank_combined": 12,
+      "rank_in_own_filing": 3,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "comparison-004",
+      "type": "comparison",
+      "accession": "0001045810-26-000021",
+      "section": "1A",
+      "rank_combined": null,
+      "rank_in_own_filing": null,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "comparison-004",
+      "type": "comparison",
+      "accession": "0001045810-26-000075",
+      "section": "I-2",
+      "rank_combined": 24,
+      "rank_in_own_filing": 15,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "comparison-005",
+      "type": "comparison",
+      "accession": "0000723125-25-000028",
+      "section": "1A",
+      "rank_combined": null,
+      "rank_in_own_filing": 18,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "comparison-005",
+      "type": "comparison",
+      "accession": "0000723125-26-000015",
+      "section": "II-1A",
+      "rank_combined": null,
+      "rank_in_own_filing": 16,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "comparison-006",
+      "type": "comparison",
+      "accession": "0000723125-26-000006",
+      "section": "I-2",
+      "rank_combined": 4,
+      "rank_in_own_filing": 2,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "comparison-006",
+      "type": "comparison",
+      "accession": "0000723125-26-000015",
+      "section": "I-2",
+      "rank_combined": 11,
+      "rank_in_own_filing": 4,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "cross-company-001",
+      "type": "cross-company",
+      "accession": "0001045810-26-000075",
+      "section": "I-2",
+      "rank_combined": null,
+      "rank_in_own_filing": 17,
+      "filings_in_top8": 6
+    },
+    {
+      "item_id": "cross-company-001",
+      "type": "cross-company",
+      "accession": "0000002488-26-000018",
+      "section": "7",
+      "rank_combined": 2,
+      "rank_in_own_filing": 1,
+      "filings_in_top8": 6
+    },
+    {
+      "item_id": "cross-company-001",
+      "type": "cross-company",
+      "accession": "0001193125-26-323660",
+      "section": "7",
+      "rank_combined": 1,
+      "rank_in_own_filing": 1,
+      "filings_in_top8": 6
+    },
+    {
+      "item_id": "cross-company-002",
+      "type": "cross-company",
+      "accession": "0001045810-26-000075",
+      "section": "I-2",
+      "rank_combined": 22,
+      "rank_in_own_filing": 8,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "cross-company-002",
+      "type": "cross-company",
+      "accession": "0001193125-26-191507",
+      "section": "I-2",
+      "rank_combined": 40,
+      "rank_in_own_filing": 1,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "cross-company-002",
+      "type": "cross-company",
+      "accession": "0000723125-26-000015",
+      "section": "I-2",
+      "rank_combined": 14,
+      "rank_in_own_filing": 10,
+      "filings_in_top8": 2
+    },
+    {
+      "item_id": "cross-company-003",
+      "type": "cross-company",
+      "accession": "0000723125-26-000015",
+      "section": "I-2",
+      "rank_combined": 22,
+      "rank_in_own_filing": 1,
+      "filings_in_top8": 6
+    },
+    {
+      "item_id": "cross-company-003",
+      "type": "cross-company",
+      "accession": "0001628280-26-058235",
+      "section": "I-2",
+      "rank_combined": 1,
+      "rank_in_own_filing": 1,
+      "filings_in_top8": 6
+    },
+    {
+      "item_id": "cross-company-004",
+      "type": "cross-company",
+      "accession": "0001628280-25-056742",
+      "section": "1A",
+      "rank_combined": 12,
+      "rank_in_own_filing": 4,
+      "filings_in_top8": 3
+    },
+    {
+      "item_id": "cross-company-004",
+      "type": "cross-company",
+      "accession": "0000707549-26-000037",
+      "section": "1A",
+      "rank_combined": 3,
+      "rank_in_own_filing": 2,
+      "filings_in_top8": 3
+    },
+    {
+      "item_id": "cross-company-004",
+      "type": "cross-company",
+      "accession": "0000319201-26-000027",
+      "section": "1A",
+      "rank_combined": 7,
+      "rank_in_own_filing": 3,
+      "filings_in_top8": 3
+    }
+  ]
+}

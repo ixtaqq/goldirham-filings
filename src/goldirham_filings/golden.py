@@ -5,6 +5,7 @@ section and checks text[start:end] == quote, so a parser change that shifts offs
 loudly instead of silently breaking the set.
 """
 
+import random
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal
@@ -47,6 +48,7 @@ def save_golden(path: Path, items: list[GoldItem]) -> None:
     path.write_text(
         "".join(item.model_dump_json(exclude_none=False) + "\n" for item in items),
         encoding="utf-8",
+        newline="\n",
     )
 
 
@@ -107,3 +109,30 @@ def validate(conn: psycopg.Connection[tuple[Any, ...]], items: list[GoldItem]) -
             elif text[span.start : span.end] != span.quote:
                 problems.append(f"{where}: offsets {span.start}-{span.end} no longer match quote")
     return problems
+
+
+SplitName = Literal["dev", "test"]
+
+
+def make_split(items: list[GoldItem], seed: int, test_fraction: float) -> dict[str, Any]:
+    """Stratified by item type: each type contributes round(n * test_fraction) test items,
+    chosen by a seeded shuffle of its sorted ids, so the split is reproducible."""
+    rng = random.Random(seed)
+    test: list[str] = []
+    for item_type in sorted({i.type for i in items}):
+        ids = sorted(i.id for i in items if i.type == item_type)
+        rng.shuffle(ids)
+        test.extend(ids[: round(len(ids) * test_fraction)])
+    dev = sorted(i.id for i in items if i.id not in set(test))
+    return {"seed": seed, "test_fraction": test_fraction, "dev": dev, "test": sorted(test)}
+
+
+def select(items: list[GoldItem], split: dict[str, Any], name: SplitName | None) -> list[GoldItem]:
+    """Items in one split, in golden-set order; None keeps every item."""
+    if name is None:
+        return items
+    wanted = set(split[name])
+    missing = wanted - {i.id for i in items}
+    if missing:
+        raise ValueError(f"split names items not in the golden set: {sorted(missing)}")
+    return [i for i in items if i.id in wanted]

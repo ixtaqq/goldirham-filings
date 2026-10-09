@@ -38,11 +38,21 @@
     "comparison-007",
     "cross-company-001",
     "cross-company-002",
-    "cross-company-003"
+    "cross-company-003",
+    "lookup-103",
+    "lookup-104",
+    "lookup-105"
   ],
   "human_checked": 0,
-  "items": 36,
-  "recall_at_5": 0.5463,
-  "recall_at_10": 0.7407,
-  "mrr": 0.4615
+  "items": 39,
+  "recall_at_5": 0.594,
+  "recall_at_8": 0.7308,
+  "recall_at_10": 0.7692,
+  "mrr": 0.4727,
+  "recall_at_10_by_type": {
+    "comparison": 0.3333,
+    "cross-company": 0.6667,
+    "lookup": 0.9,
+    "risk": 0.8
+  }
 }

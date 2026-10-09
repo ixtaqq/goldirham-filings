@@ -53,5 +53,5 @@ mypy_path = "src"
 explicit_package_bases = true
 
 [[tool.mypy.overrides]]
-module = ["pgvector.*"]
+module = ["pgvector.*", "sentence_transformers.*"]
 ignore_missing_imports = true

@@ -11,12 +11,22 @@ from goldirham_filings.config import ROOT, Settings, settings
 from goldirham_filings.db import connect
 from goldirham_filings.edgar import EdgarClient, Form
 from goldirham_filings.embed import EMBEDDING_MODELS, OllamaEmbedder, embed_missing
-from goldirham_filings.golden import GoldItem, load_golden, resolve_offsets, save_golden, validate
+from goldirham_filings.golden import (
+    GoldItem,
+    load_golden,
+    make_split,
+    resolve_offsets,
+    save_golden,
+    select,
+    validate,
+)
 from goldirham_filings.ingest import M1_TICKERS, ingest
 from goldirham_filings.retrieve import Filters, Retriever, latest_filings
 
 GOLDEN_PATH = ROOT / "evals" / "golden.jsonl"
 BASELINE_PATH = ROOT / "evals" / "baseline.json"
+SPLIT_PATH = ROOT / "evals" / "split.json"
+SPLIT_SEED = 20261008
 BENCHMARKS = ROOT / "benchmarks"
 # Latest filings per form for the CI corpus; Microsoft's two 10-Ks let compare_filings and
 # the 10-K-to-10-K comparison question run in CI.
@@ -33,9 +43,10 @@ def _print_json(value: Any) -> None:
     print(json.dumps(value, indent=2, default=str))
 
 
-def _write_report(name: str, report: dict[str, Any]) -> Path:
+def _write_report(name: str, report: dict[str, Any], split: str = "", label: str = "") -> Path:
     BENCHMARKS.mkdir(exist_ok=True)
-    path = BENCHMARKS / f"{name}-{date.today().isoformat()}.json"
+    parts = [name, split, date.today().isoformat(), label]
+    path = BENCHMARKS / ("-".join(p for p in parts if p) + ".json")
     path.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
     return path
 
@@ -89,13 +100,31 @@ def cmd_golden(args: argparse.Namespace, cfg: Settings) -> None:
         sys.exit(1)
 
 
+def _split_items(args: argparse.Namespace) -> list[GoldItem]:
+    """Golden items of the requested split. Tuning uses dev; test is for reported numbers."""
+    items = load_golden(args.golden)
+    if args.split == "all":
+        return items
+    return select(items, json.loads(SPLIT_PATH.read_text(encoding="utf-8")), args.split)
+
+
+def cmd_golden_split(args: argparse.Namespace, cfg: Settings) -> None:
+    split = make_split(load_golden(args.golden), SPLIT_SEED, test_fraction=1 / 3)
+    if SPLIT_PATH.exists() and json.loads(SPLIT_PATH.read_text(encoding="utf-8")) != split:
+        sys.exit(f"{SPLIT_PATH.name} exists and differs; the split is fixed once tuning starts")
+    SPLIT_PATH.write_text(json.dumps(split, indent=2) + "\n", encoding="utf-8")
+    print(f"dev {len(split['dev'])}, test {len(split['test'])} -> {SPLIT_PATH}")
+
+
 def cmd_eval_retrieval(args: argparse.Namespace, cfg: Settings) -> None:
     """Compare embedding models (and modes) on the golden set's retrieval metrics."""
     from goldirham_filings.evaluate import rows, run_retrieval, summarize_retrieval
 
-    items = [i for i in load_golden(args.golden) if i.answerable]
-    unanswerable = [i for i in load_golden(args.golden) if not i.answerable]
-    report: dict[str, Any] = {"golden": str(args.golden), "runs": []}
+    selected = _split_items(args)
+    items = [i for i in selected if i.answerable]
+    unanswerable = [i for i in selected if not i.answerable]
+    report: dict[str, Any] = {"golden": str(args.golden), "split": args.split,
+                              "label": args.label, "runs": []}  # fmt: skip
     with connect() as conn:
         for model in args.models or [cfg.embedding_model]:
             for mode in args.modes:
@@ -108,7 +137,7 @@ def cmd_eval_retrieval(args: argparse.Namespace, cfg: Settings) -> None:
                     "unanswerable_top_similarity": [s.top_similarity for s in negatives],
                 })  # fmt: skip
                 print(f"{model:20} {mode:8} {summary}")
-    print(f"wrote {_write_report('retrieval', report)}")
+    print(f"wrote {_write_report('retrieval', report, args.split, args.label)}")
 
 
 def cmd_eval_full(args: argparse.Namespace, cfg: Settings) -> None:
@@ -122,7 +151,7 @@ def cmd_eval_full(args: argparse.Namespace, cfg: Settings) -> None:
         summarize_retrieval,
     )
 
-    items = load_golden(args.golden)
+    items = _split_items(args)
     chat = OllamaChat(cfg.answer_model, cfg.ollama_url)
     with connect() as conn:
         retriever = Retriever(conn, OllamaEmbedder(cfg.embedding_model, cfg.ollama_url))
@@ -139,7 +168,8 @@ def cmd_eval_full(args: argparse.Namespace, cfg: Settings) -> None:
     report = {
         "config": {"embedding_model": cfg.embedding_model, "answer_model": cfg.answer_model,
                    "abstain_min_similarity": cfg.abstain_min_similarity, "k": answerer.k},
-        "golden": {"path": str(args.golden), "items": len(items),
+        "golden": {"path": str(args.golden), "split": args.split, "label": args.label,
+                   "items": len(items),
                    "human_checked": sum(i.checked_by is not None for i in items)},
         "retrieval": summarize_retrieval(retrieval),
         "suggested_abstain_threshold": asdict(suggested),
@@ -148,7 +178,7 @@ def cmd_eval_full(args: argparse.Namespace, cfg: Settings) -> None:
         "answer_items": rows(answers),
     }  # fmt: skip
     _print_json({k: report[k] for k in ("config", "golden", "retrieval", "answers")})
-    print(f"wrote {_write_report('eval', report)}")
+    print(f"wrote {_write_report('eval', report, args.split, args.label)}")
 
 
 def _gate_items(items: list[GoldItem], accessions: list[str]) -> list[GoldItem]:
@@ -243,6 +273,10 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--tickers", nargs="+")
     p.set_defaults(func=cmd_answer)
 
+    p = commands.add_parser("split", help="write the fixed dev/test split of the golden set")
+    p.add_argument("--golden", type=Path, default=GOLDEN_PATH)
+    p.set_defaults(func=cmd_golden_split)
+
     p = commands.add_parser("golden", help="resolve or validate golden-set offsets")
     p.add_argument("action", choices=["resolve", "validate"])
     p.add_argument("path", type=Path, nargs="?", default=GOLDEN_PATH)
@@ -264,6 +298,10 @@ def main(argv: list[str] | None = None) -> None:
     e.set_defaults(func=cmd_eval_gate)
     for e in (evals.choices["retrieval"], evals.choices["full"], evals.choices["gate"]):
         e.add_argument("--golden", type=Path, default=GOLDEN_PATH)
+    for e in (evals.choices["retrieval"], evals.choices["full"]):
+        e.add_argument("--split", default="dev", choices=["dev", "test", "all"],
+                       help="dev for tuning; test only for reported milestones")  # fmt: skip
+        e.add_argument("--label", default="", help="appended to the report file name")
 
     p = commands.add_parser("fixtures", help="export or load the CI fixture corpus")
     p.add_argument("action", choices=["export", "load"])

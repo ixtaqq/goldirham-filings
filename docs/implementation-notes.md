@@ -48,17 +48,33 @@ Where the first implementation departs from `design.md`, and why. The decision l
   corrected here and checked by `scripts/check_companies.py`. `ai-infra-digest` itself is
   unchanged.
 
+- **Dev/test split** (`evals/split.json`, seed 20261008, stratified by type). Tuning uses dev
+  only, and every test run is logged. Eight dev-only recency questions (lookup-101 to 108)
+  were added later. They are unchecked and never part of test.
+- **Per-filing retrieval.** When scope names two or more filings, each filing is searched
+  separately and the rankings are interleaved round-robin (`retrieve.balance_groups`,
+  `interleave`).
+- **Recency preference.** When neither the question nor the caller names filings or periods,
+  each fused rank score is multiplied by 0.9 for every newer filing the same company has
+  (`retrieve.prefer_recent`).
+- **Answer prompt.** Two rules were added. The model cites only passages that directly state
+  the fact, and it does not calculate new figures. Exact repeated sentences are dropped in code.
+- **The partial-answer rule was tried and reverted.** It let the model answer the covered
+  parts of multi-part questions. It cut dev wrong declines but answered an unanswerable test
+  question, breaking the unanswerable floor.
+
 ## Not done in this pass
 
-- **Human checks.** No golden item is hand-checked yet (`checked_by` is null on all 60), and
+- **Human checks.** No golden item is hand-checked yet (`checked_by` is null on all 68, including the 8 dev-only recency questions), and
   there is no human spot-check of 20 answers. All metrics and the CI baseline are provisional.
 - **MCP clients.** The server was not tried from Claude Desktop or the MCP Inspector. The stdio
   entry point is exercised by `scripts/mcp_smoke.py`, which checks one result per tool.
-- **Reranker.** Not implemented. Design open question 3 defaults to off until measured.
+- **Reranker.** Measured and rejected: bge-reranker-base on CPU gained 0.5 MRR points (the bar
+  was 3) and cost recall (`benchmarks/rerank-dev-2026-10-08-bge-reranker-base.json`).
 - **bge-m3 on the final chunks.** bge-m3 had the worst hybrid scores on the earlier chunks, so
   it was not re-embedded after the chunker fix.
-- **Recency.** Questions that don't name a filing, such as "what does NVIDIA say about X",
-  search all eight filings with no preference for recent ones.
+- **Multi-company questions without a filing reference.** Per-company retrieval was tried
+  and reverted. Dev has only one such question, so it couldn't be measured.
 - **Within-filing ranking for comparisons.** Comparison questions retrieve both filings but
   rank the changed sentences low, which drives most false abstentions.
 - **Demo, CV and portfolio.** The demo recording and the CV and portfolio updates belong to

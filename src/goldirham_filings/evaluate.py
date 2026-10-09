@@ -34,7 +34,9 @@ def span_hit(passage: Passage, span: GoldSpan) -> bool:
 @dataclass(frozen=True)
 class RetrievalScore:
     item_id: str
+    item_type: str
     recall_at_5: float
+    recall_at_8: float
     recall_at_10: float
     reciprocal_rank: float
     top_similarity: float | None
@@ -57,19 +59,27 @@ def score_retrieval(item: GoldItem, ranked: Sequence[Passage]) -> RetrievalScore
     similarities = [p.similarity for p in ranked if p.similarity is not None]
     return RetrievalScore(
         item_id=item.id,
+        item_type=item.type,
         recall_at_5=recall(5),
+        recall_at_8=recall(8),
         recall_at_10=recall(10),
         reciprocal_rank=1.0 / first_hit if first_hit else 0.0,
         top_similarity=max(similarities) if similarities else None,
     )
 
 
-def summarize_retrieval(scores: Sequence[RetrievalScore]) -> dict[str, float]:
+def summarize_retrieval(scores: Sequence[RetrievalScore]) -> dict[str, Any]:
+    """Overall metrics, plus Recall@10 per item type. recall_at_8 is what the answerer sees."""
+    types = sorted({s.item_type for s in scores})
     return {
         "items": len(scores),
         "recall_at_5": round(mean(s.recall_at_5 for s in scores), 4),
+        "recall_at_8": round(mean(s.recall_at_8 for s in scores), 4),
         "recall_at_10": round(mean(s.recall_at_10 for s in scores), 4),
         "mrr": round(mean(s.reciprocal_rank for s in scores), 4),
+        "recall_at_10_by_type": {
+            t: round(mean(s.recall_at_10 for s in scores if s.item_type == t), 4) for t in types
+        },
     }
 
 
@@ -133,12 +143,20 @@ missing, or contradicts the reference."""
 @dataclass(frozen=True)
 class AnswerScore:
     item_id: str
+    item_type: str
     answerable: bool
     abstained: bool
     citation_precision: float | None
     unsupported_numbers: int
     verdict: Verdict
     answer: str
+    gold_in_passages: bool
+    cited: list[str]
+    notes: list[str]
+
+
+def _where(p: Passage) -> str:
+    return f"{p.accession} {p.section} {p.start_char}-{p.end_char}"
 
 
 def score_answer(item: GoldItem, result: AnswerResult, verdict: Verdict) -> AnswerScore:
@@ -150,12 +168,16 @@ def score_answer(item: GoldItem, result: AnswerResult, verdict: Verdict) -> Answ
         precision = sum(hits) / len(hits)
     return AnswerScore(
         item_id=item.id,
+        item_type=item.type,
         answerable=item.answerable,
         abstained=abstained,
         citation_precision=precision,
         unsupported_numbers=sum(len(s.unsupported_numbers) for s in result.sentences),
         verdict=verdict,
         answer=" ".join(s.text for s in result.sentences),
+        gold_in_passages=any(span_hit(p, s) for p in result.passages for s in item.gold_spans),
+        cited=[_where(result.passages[c - 1]) for c in cited],
+        notes=result.notes,
     )
 
 
@@ -164,8 +186,15 @@ def summarize_answers(scores: Sequence[AnswerScore]) -> dict[str, Any]:
     unanswerable = [s for s in scores if not s.answerable]
     precisions = [s.citation_precision for s in answerable if s.citation_precision is not None]
     judged = [s for s in answerable if s.verdict != "not_applicable"]
+    declined = [s for s in answerable if s.abstained]
     return {
         "items": len(scores),
+        "declines_by_type": {
+            t: f"{sum(s.abstained for s in scores if s.item_type == t)}"
+            f"/{sum(s.item_type == t for s in scores)}"
+            for t in sorted({s.item_type for s in scores})
+        },
+        "false_declines_with_gold_in_passages": sum(s.gold_in_passages for s in declined),
         "citation_precision": round(mean(precisions), 4) if precisions else None,
         "answers_with_unsupported_numbers": sum(s.unsupported_numbers > 0 for s in scores),
         "abstention_accuracy": (

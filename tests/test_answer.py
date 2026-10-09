@@ -120,3 +120,13 @@ def test_no_passages_abstains_without_calling_the_model() -> None:
     assert (result.status, result.notes, chat.prompts) == (
         "abstained", ["no indexed filing matches the question"], [],
     )  # fmt: skip
+
+
+def test_repeated_sentences_are_kept_once() -> None:
+    chat = FakeChat({"answerable": True, "sentences": [
+        {"text": "Data Center revenue was $41,096 million.", "citations": [1]},
+        {"text": "Data Center revenue was $41,096 million.", "citations": [1]},
+    ]})  # fmt: skip
+    result = Answerer(FakeSearcher(PASSAGES), chat).answer("q")
+    assert [s.text for s in result.sentences] == ["Data Center revenue was $41,096 million."]
+    assert result.notes == ["removed repeated sentence: 'Data Center revenue was $41,096 million.'"]

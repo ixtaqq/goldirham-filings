@@ -9,7 +9,7 @@ from goldirham_filings.evaluate import (
     similarity_threshold,
     summarize_retrieval,
 )
-from goldirham_filings.golden import GoldItem, GoldSpan
+from goldirham_filings.golden import GoldItem, GoldSpan, ItemType, make_split, select
 from goldirham_filings.retrieve import Passage
 
 
@@ -47,7 +47,10 @@ def test_score_retrieval_counts_overlapping_spans_by_rank() -> None:
 def test_summary_and_gate_flag_only_drops_beyond_tolerance() -> None:
     ranked = [passage("A", "1A", 120, 130), passage("B", "1A", 900, 901)]
     summary = summarize_retrieval([score_retrieval(ITEM, ranked), score_retrieval(ITEM, [])])
-    assert summary == {"items": 2, "recall_at_5": 0.5, "recall_at_10": 0.5, "mrr": 0.5}
+    assert summary == {
+        "items": 2, "recall_at_5": 0.5, "recall_at_8": 0.5, "recall_at_10": 0.5, "mrr": 0.5,
+        "recall_at_10_by_type": {"comparison": 0.5},
+    }  # fmt: skip
     assert gate(summary, {"recall_at_10": 0.52, "mrr": 0.5}) == []
     assert gate(summary, {"recall_at_10": 0.53, "mrr": 0.5}) == [
         "recall_at_10 0.5000 is more than 0.02 below baseline 0.5300"
@@ -77,3 +80,26 @@ def test_unanswerable_item_scores_only_top_similarity() -> None:
                     gold_spans=[], gold_answer="")  # fmt: skip
     score = score_retrieval(item, [passage("A", "1A", 0, 10, sim=0.42)])
     assert (score.recall_at_10, score.reciprocal_rank, score.top_similarity) == (0.0, 0.0, 0.42)
+
+
+def test_split_is_stratified_reproducible_and_disjoint() -> None:
+    counts: tuple[tuple[ItemType, int], ...] = (("lookup", 21), ("risk", 15), ("unanswerable", 9))
+    items = [
+        GoldItem(
+            id=f"{t}-{n:03d}",
+            type=t,
+            question="q",
+            answerable=t != "unanswerable",
+            gold_spans=[],
+            gold_answer="",
+        )  # fmt: skip
+        for t, count in counts
+        for n in range(count)
+    ]
+    split = make_split(items, seed=7, test_fraction=1 / 3)
+    assert split == make_split(list(reversed(items)), seed=7, test_fraction=1 / 3)
+    assert not set(split["dev"]) & set(split["test"])
+    assert [sum(i.startswith(t) for i in split["test"]) for t in ("lookup", "risk", "unan")] == [
+        7, 5, 3,
+    ]  # fmt: skip
+    assert [i.id for i in select(items, split, "test")] == split["test"]

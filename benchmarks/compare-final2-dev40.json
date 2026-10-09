@@ -1,0 +1,110 @@
+{
+  "items": [
+    "comparison-001",
+    "comparison-002",
+    "comparison-003",
+    "comparison-004",
+    "comparison-005",
+    "comparison-006",
+    "cross-company-001",
+    "cross-company-002",
+    "cross-company-003",
+    "cross-company-004",
+    "lookup-001",
+    "lookup-002",
+    "lookup-004",
+    "lookup-005",
+    "lookup-007",
+    "lookup-008",
+    "lookup-009",
+    "lookup-010",
+    "lookup-012",
+    "lookup-013",
+    "lookup-015",
+    "lookup-017",
+    "lookup-018",
+    "lookup-021",
+    "risk-002",
+    "risk-003",
+    "risk-006",
+    "risk-008",
+    "risk-009",
+    "risk-010",
+    "risk-011",
+    "risk-012",
+    "risk-013",
+    "risk-015",
+    "unanswerable-001",
+    "unanswerable-002",
+    "unanswerable-003",
+    "unanswerable-004",
+    "unanswerable-005",
+    "unanswerable-006"
+  ],
+  "reports": {
+    "eval-dev-2026-10-08-baseline.json": {
+      "retrieval": {
+        "items": 34,
+        "recall_at_5": 0.5441,
+        "recall_at_8": 0.6863,
+        "recall_at_10": 0.7157,
+        "mrr": 0.4682,
+        "recall_at_10_by_type": {
+          "comparison": 0.4167,
+          "cross-company": 0.4583,
+          "lookup": 0.8571,
+          "risk": 0.8
+        }
+      },
+      "answers": {
+        "items": 40,
+        "declines_by_type": {
+          "comparison": "5/6",
+          "cross-company": "2/4",
+          "lookup": "2/14",
+          "risk": "3/10",
+          "unanswerable": "6/6"
+        },
+        "false_declines_with_gold_in_passages": 4,
+        "citation_precision": 0.6247,
+        "answers_with_unsupported_numbers": 0,
+        "abstention_accuracy": 1,
+        "false_abstention_rate": 0.3529,
+        "judge_correct_rate": 0.5294,
+        "judge_note": "local 8B judge; indicative until compared with a human spot-check"
+      }
+    },
+    "eval-dev-2026-10-09-final2.json": {
+      "retrieval": {
+        "items": 34,
+        "recall_at_5": 0.5588,
+        "recall_at_8": 0.7402,
+        "recall_at_10": 0.7549,
+        "mrr": 0.485,
+        "recall_at_10_by_type": {
+          "comparison": 0.5,
+          "cross-company": 0.6667,
+          "lookup": 0.8571,
+          "risk": 0.8
+        }
+      },
+      "answers": {
+        "items": 40,
+        "declines_by_type": {
+          "comparison": "5/6",
+          "cross-company": "2/4",
+          "lookup": "1/14",
+          "risk": "3/10",
+          "unanswerable": "6/6"
+        },
+        "false_declines_with_gold_in_passages": 6,
+        "citation_precision": 0.6957,
+        "answers_with_unsupported_numbers": 2,
+        "abstention_accuracy": 1,
+        "false_abstention_rate": 0.3235,
+        "judge_correct_rate": 0.6176,
+        "judge_note": "local 8B judge; indicative until compared with a human spot-check"
+      }
+    }
+  }
+}

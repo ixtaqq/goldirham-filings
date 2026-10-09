@@ -3,8 +3,10 @@
 import re
 from collections.abc import Sequence
 from datetime import date
+from itertools import zip_longest
 from typing import Any, Literal
 
+import numpy as np
 import psycopg
 from pydantic import BaseModel
 
@@ -14,6 +16,8 @@ from goldirham_filings.scope import parse_references, resolve_accessions
 
 SearchMode = Literal["hybrid", "keyword", "vector"]
 RRF_K = 60
+# Applied only when neither the question nor the caller names filings or periods.
+RECENCY_DECAY = 0.9
 
 PASSAGE_COLUMNS = """
     c.id, co.ticker, co.name, f.form, f.accession, f.period_end, f.filed_at, s.item, s.title,
@@ -62,6 +66,48 @@ def reciprocal_rank_fusion(rankings: Sequence[Sequence[int]], k: int = RRF_K) ->
     return sorted(scores, key=lambda item: (-scores[item], item))
 
 
+def prefer_recent(ids: list[int], ages: dict[int, int], decay: float) -> list[int]:
+    """Re-rank fused results with a mild preference for newer filings: each step back in
+    the company's filing history multiplies the rank score by `decay`."""
+    score = {i: decay ** ages.get(i, 0) / (RRF_K + rank) for rank, i in enumerate(ids, 1)}
+    return sorted(ids, key=lambda i: -score[i])
+
+
+def filing_ages(conn: psycopg.Connection[tuple[Any, ...]], ids: list[int]) -> dict[int, int]:
+    """Chunk id -> how many filings of the same company are newer than its filing."""
+    rows = conn.execute(
+        """
+        WITH f AS (
+            SELECT accession,
+                   dense_rank() OVER (PARTITION BY cik ORDER BY period_end DESC NULLS LAST) - 1
+                       AS age
+            FROM filings
+        )
+        SELECT c.id, f.age FROM chunks c
+        JOIN sections s ON s.id = c.section_id JOIN f ON f.accession = s.accession
+        WHERE c.id = ANY(%s)
+        """,
+        (ids,),
+    ).fetchall()
+    return {int(r[0]): int(r[1]) for r in rows}
+
+
+def balance_groups(filters: Filters) -> list[Filters]:
+    """One search per named filing when the question names several, so a long or
+    keyword-dense filing cannot crowd the others out of the top k."""
+    if filters.accessions and len(filters.accessions) > 1:
+        return [filters.model_copy(update={"accessions": [a]}) for a in filters.accessions]
+    return [filters]
+
+
+def interleave(rankings: Sequence[Sequence[int]]) -> list[int]:
+    """Round-robin merge: first of each ranking, then second of each, without repeats."""
+    merged: dict[int, None] = {}
+    for tier in zip_longest(*rankings):
+        merged.update((i, None) for i in tier if i is not None)
+    return list(merged)
+
+
 def keyword_tsquery(text: str) -> str | None:
     """OR of the query's words. websearch_to_tsquery ANDs every word, which finds nothing
     for most natural-language questions. ts_rank (not ts_rank_cd) ranks the OR matches: on the
@@ -101,12 +147,14 @@ class Retriever:
         candidates: int = 50,
         mode: SearchMode = "hybrid",
         scope_from_query: bool = True,
+        recency_decay: float = RECENCY_DECAY,
     ) -> None:
         self.conn = conn
         self.embedder = embedder
         self.candidates = candidates
         self.mode = mode
         self.scope_from_query = scope_from_query
+        self.recency_decay = recency_decay
 
     def scoped(self, query: str, filters: Filters) -> Filters | None:
         """Restrict to the filings the query names ("most recent 10-Q", "fiscal 2025 10-K").
@@ -142,7 +190,7 @@ class Retriever:
         ).fetchall()
         return [r[0] for r in rows]
 
-    def vector_hits(self, query: str, filters: Filters) -> dict[int, float]:
+    def vector_hits(self, vector: np.ndarray, filters: Filters) -> dict[int, float]:
         """Chunk id -> cosine similarity, best first."""
         where, params = _where(filters)
         rows = self.conn.execute(
@@ -152,9 +200,21 @@ class Retriever:
             WHERE {where}
             ORDER BY 2 DESC, c.id LIMIT %s
             """,
-            [self.embedder.embed_query(query), self.embedder.model, *params, self.candidates],
+            [vector, self.embedder.model, *params, self.candidates],
         ).fetchall()
         return {r[0]: float(r[1]) for r in rows}
+
+    def _fused(
+        self, query: str, vector: np.ndarray | None, filters: Filters
+    ) -> tuple[list[int], dict[int, float]]:
+        rankings: list[list[int]] = []
+        similarities: dict[int, float] = {}
+        if self.mode in ("hybrid", "keyword"):
+            rankings.append(self.keyword_ids(query, filters))
+        if vector is not None:
+            similarities = self.vector_hits(vector, filters)
+            rankings.append(list(similarities))
+        return reciprocal_rank_fusion(rankings), similarities
 
     def search(self, query: str, filters: Filters | None = None, k: int = 8) -> list[Passage]:
         """Top k by reciprocal rank fusion. `similarity` is set for chunks the vector search
@@ -163,15 +223,19 @@ class Retriever:
         scoped = self.scoped(query, filters or Filters())
         if scoped is None:
             return []
-        filters = scoped
-        rankings: list[list[int]] = []
+        vector = self.embedder.embed_query(query) if self.mode != "keyword" else None
         similarities: dict[int, float] = {}
-        if self.mode in ("hybrid", "keyword"):
-            rankings.append(self.keyword_ids(query, filters))
-        if self.mode in ("hybrid", "vector"):
-            similarities = self.vector_hits(query, filters)
-            rankings.append(list(similarities))
-        ids = reciprocal_rank_fusion(rankings)[:k]
+        rankings = []
+        for group in balance_groups(scoped):
+            ids, sims = self._fused(query, vector, group)
+            rankings.append(ids)
+            similarities |= sims
+        ids = interleave(rankings)
+        if self.recency_decay < 1 and not (
+            scoped.accessions or scoped.period_from or scoped.period_to
+        ):
+            ids = prefer_recent(ids, filing_ages(self.conn, ids), self.recency_decay)
+        ids = ids[:k]
         by_id = {p.chunk_id: p for p in passages_by_id(self.conn, ids)}
         return [
             by_id[i].model_copy(
