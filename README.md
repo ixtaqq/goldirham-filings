@@ -137,8 +137,8 @@ dev questions (`compare-final2-dev40.json`), and test numbers on all 20
 **CI gate.** The fixture corpus is 11 filings (1,584 chunks) and 39 golden questions, with
 precomputed vectors. The baseline is Recall@10 0.769 and MRR 0.473 (`evals/baseline.json`).
 With vector search dropped, the gate measured Recall@10 0.654 and MRR 0.367 and failed.
-`tests/test_gate.py` checks this in CI. GitHub Actions has run once, on the initial push
-(2026-10-08), and passed. Later changes are local and not pushed yet.
+`tests/test_gate.py` checks this in CI. GitHub Actions runs on every push to `main`, and
+the gate has passed in CI since the initial push.
 
 ## Run it
 
