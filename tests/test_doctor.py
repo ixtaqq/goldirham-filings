@@ -6,6 +6,7 @@ from goldirham_filings.doctor import (
     migration_check,
     model_check,
     model_pulled,
+    tickers_check,
     user_agent_check,
 )
 
@@ -46,3 +47,11 @@ def test_embeddings_pass_only_when_every_chunk_has_a_vector() -> None:
 def test_report_has_one_verdict_per_line() -> None:
     report = format_report([Check("a", True, "fine"), Check("b", False, "broken")])
     assert report.splitlines() == ["PASS  a: fine", "FAIL  b: broken"]
+
+
+def test_ingest_tickers_must_be_tracked_domestic_filers() -> None:
+    assert tickers_check(["NVDA", "AMD"]).ok
+    assert not tickers_check([]).ok
+    bad = tickers_check(["NVDA", "XYZ", "TSM"])
+    assert not bad.ok
+    assert bad.detail == "not tracked: XYZ; 20-F filers, not ingested: TSM"

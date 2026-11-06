@@ -139,3 +139,29 @@ def test_sections_map_across_forms() -> None:
     assert section_for_form("7", "10-K") == "7"
     assert section_for_form("1C", "10-Q") is None
     assert section_for_form("II-6", "10-K") is None
+
+
+INTEL_STYLE = "\n".join([
+    "Page", "Forward-Looking Statements", "Consolidated Condensed Financial Statements and "
+    "Supplemental Details", "Management's Discussion and Analysis (MD&A)", "Risk Factors",
+    "Exhibits", "Form 10-Q Cross-Reference Index",
+    "Forward-Looking Statements", "This Form 10-Q contains forward-looking statements.",
+    "Financial Statements | Consolidated Condensed Statements of Operations", "x" * 1200,
+    "Management's Discussion and Analysis", "Revenue grew. " * 100,
+    "Risk Factors", "No material changes.",
+    "Exhibits", "31.1 Certification",
+])  # fmt: skip
+
+
+def test_a_cross_reference_10q_is_split_on_its_own_headings() -> None:
+    sections = split_sections(INTEL_STYLE, "10-Q")
+    assert [s.item for s in sections] == ["I-1", "I-2", "II-1A", "II-6"]
+    assert sections[1].text.startswith("Management's Discussion and Analysis\nRevenue grew.")
+    assert sections[2].text == "Risk Factors\nNo material changes.\n"
+    assert "forward-looking statements." not in "".join(s.text for s in sections)
+
+
+def test_own_headings_missing_a_required_section_keep_the_whole_document() -> None:
+    no_mdna = INTEL_STYLE.replace("Management's Discussion and Analysis\n", "Results\n")
+    assert [s.item for s in split_sections(no_mdna, "10-Q")] == ["unknown"]
+    assert [s.item for s in split_sections(INTEL_STYLE, "10-K")] == ["unknown"]

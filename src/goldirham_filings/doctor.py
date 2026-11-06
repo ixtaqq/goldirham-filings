@@ -31,6 +31,22 @@ def user_agent_check(user_agent: str) -> Check:
     return Check(name, True, value)
 
 
+def tickers_check(tickers: list[str]) -> Check:
+    """INGEST_TICKERS must name tracked companies that file 10-Ks and 10-Qs."""
+    from goldirham_filings.companies import BY_TICKER
+
+    name = "INGEST_TICKERS"
+    unknown = [t for t in tickers if t not in BY_TICKER]
+    foreign = [t for t in tickers if t in BY_TICKER and BY_TICKER[t].filer_type == "foreign"]
+    if not tickers:
+        return Check(name, False, "empty; list tickers such as NVDA,AMD")
+    if unknown or foreign:
+        problems = [f"not tracked: {', '.join(unknown)}"] if unknown else []
+        problems += [f"20-F filers, not ingested: {', '.join(foreign)}"] if foreign else []
+        return Check(name, False, "; ".join(problems))
+    return Check(name, True, f"{len(tickers)} companies")
+
+
 def migration_check(current: set[str], heads: set[str]) -> Check:
     name = "migrations"
     if current == heads:
@@ -147,4 +163,9 @@ def _ollama_checks(cfg: Settings) -> list[Check]:
 
 
 def run_checks(cfg: Settings) -> list[Check]:
-    return [*_database_checks(cfg), *_ollama_checks(cfg), user_agent_check(cfg.sec_user_agent)]
+    return [
+        *_database_checks(cfg),
+        *_ollama_checks(cfg),
+        user_agent_check(cfg.sec_user_agent),
+        tickers_check(cfg.ingest_ticker_list),
+    ]

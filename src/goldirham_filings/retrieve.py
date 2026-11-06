@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Sequence
-from datetime import date
+from datetime import date, datetime
 from itertools import zip_longest
 from typing import Any, Literal
 
@@ -385,6 +385,7 @@ class CoverageRow(BaseModel):
     forms: dict[str, int]
     earliest_period: date | None
     latest_period: date | None
+    latest_filed: date | None = None
 
 
 def coverage(conn: psycopg.Connection[tuple[Any, ...]]) -> list[CoverageRow]:
@@ -392,16 +393,34 @@ def coverage(conn: psycopg.Connection[tuple[Any, ...]]) -> list[CoverageRow]:
         """
         SELECT co.ticker, co.name, co.filer_type,
                count(*) FILTER (WHERE f.form = '10-K'), count(*) FILTER (WHERE f.form = '10-Q'),
-               min(f.period_end), max(f.period_end)
+               min(f.period_end), max(f.period_end), max(f.filed_at)
         FROM companies co LEFT JOIN filings f ON f.cik = co.cik
         GROUP BY co.ticker, co.name, co.filer_type ORDER BY co.ticker
         """
     ).fetchall()
     return [
         CoverageRow(ticker=r[0], company=r[1], filer_type=r[2],
-                    forms={"10-K": r[3], "10-Q": r[4]}, earliest_period=r[5], latest_period=r[6])
+                    forms={"10-K": r[3], "10-Q": r[4]}, earliest_period=r[5], latest_period=r[6],
+                    latest_filed=r[7])
         for r in rows
     ]  # fmt: skip
+
+
+class IndexRun(BaseModel):
+    command: str
+    finished_at: datetime
+    filings_indexed: int
+    failures: int
+
+
+def last_run(conn: psycopg.Connection[tuple[Any, ...]]) -> IndexRun | None:
+    """The most recent ingest or update run: when EDGAR was last checked."""
+    row = conn.execute(
+        "SELECT command, finished_at, filings_indexed, failures FROM index_runs"
+        " ORDER BY finished_at DESC LIMIT 1"
+    ).fetchone()
+    return None if row is None else IndexRun(command=row[0], finished_at=row[1],
+                                             filings_indexed=row[2], failures=row[3])  # fmt: skip
 
 
 class ChangedPassage(BaseModel):

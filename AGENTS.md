@@ -18,7 +18,9 @@ Read `E:\workspace\agent-homebase\PROJECT-WORKFLOW.md` for the shared workflow.
 | --- | --- |
 | install | `python -m uv sync` |
 | database | `docker compose up -d --wait`, then `.venv\Scripts\alembic upgrade head` |
-| ingest | `.venv\Scripts\filings ingest` (EDGAR fetch; needs `SEC_USER_AGENT` in `.env`) |
+| ingest | `.venv\Scripts\filings ingest` (EDGAR fetch; needs `SEC_USER_AGENT`; tickers from `INGEST_TICKERS`) |
+| update | `.venv\Scripts\filings update` (filings newer than the index, then embed and refresh XBRL facts) |
+| XBRL facts | `.venv\Scripts\filings facts` (EDGAR companyfacts for indexed companies) |
 | embed | `.venv\Scripts\filings embed [--model M]` |
 | environment check | `.venv\Scripts\filings doctor` (PASS/FAIL per dependency, non-zero exit on failure) |
 | all checks | `powershell -File scripts\check.ps1` (what CI runs) |
@@ -51,6 +53,7 @@ is a reviewed change, never a way to make the gate pass.
 
 ## Gotchas
 
-- Intel files use a cross-reference index instead of Item headings; their filings index as one
+- Intel files use a cross-reference index instead of Item headings. Its 10-Qs are split on its own
+  headings (`parse.OWN_HEADINGS`); its 10-Ks have no risk-factors heading and index as one
   `unknown` section by design.
 - TSM, ASML and ARM are 20-F filers and are not ingested.

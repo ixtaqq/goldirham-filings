@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     abstain_min_similarity: float = 0.0
     data_dir: Path = ROOT / "data"
     sec_requests_per_second: float = 6.0
+    ingest_tickers: str = Field(
+        default="NVDA,AMD,AVGO,MSFT,AMZN,GOOGL,META,INTC,MU,AMAT,LRCX,KLAC",
+        description="Comma-separated tickers that `filings ingest` indexes by default.",
+    )
+
+    @property
+    def ingest_ticker_list(self) -> list[str]:
+        return [t.strip().upper() for t in self.ingest_tickers.split(",") if t.strip()]
 
 
 @lru_cache

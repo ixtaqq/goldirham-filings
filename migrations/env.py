@@ -11,7 +11,7 @@ def sqlalchemy_url() -> str:
     return url.replace("postgresql://", "postgresql+psycopg://", 1)
 
 
-with create_engine(sqlalchemy_url()).connect() as connection:
+with create_engine(sqlalchemy_url(), connect_args={"connect_timeout": 10}).connect() as connection:
     context.configure(connection=connection)
     with context.begin_transaction():
         context.run_migrations()
