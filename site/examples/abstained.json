@@ -1,0 +1,17 @@
+{
+  "status": "abstained",
+  "question": "What did NVIDIA report as Data Center revenue for the quarter ended October 31, 2027?",
+  "sentences": [
+    {
+      "text": "The filings in the index don't answer this.",
+      "citations": [],
+      "unsupported_numbers": [],
+      "unsupported_periods": []
+    }
+  ],
+  "passages": [],
+  "notes": [
+    "no indexed filing matches the question"
+  ],
+  "disclaimer": "Summarizes SEC filings in the index. Not investment advice."
+}
