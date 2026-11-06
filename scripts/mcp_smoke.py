@@ -49,6 +49,12 @@ CALLS: list[tuple[str, dict[str, Any], Check]] = [
         lambda r: r["status"] == "answered"
         and {p["period_end"] for p in r["passages"]} == {NVDA_LATEST_10Q_PERIOD},
     ),
+    (
+        "get_financial_fact",
+        {"ticker": "AMD", "concept": "revenue", "fiscal_year": 2026, "fiscal_period": "Q3"},
+        lambda r: any(f["value"] in (13377000000, "13377000000") and f["duration_days"] == 91
+                      and f["form"] == "10-Q" for f in r["facts"]),
+    ),
 ]  # fmt: skip
 
 

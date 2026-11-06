@@ -10,6 +10,7 @@ from goldirham_filings import ingest
 from goldirham_filings.companies import BY_TICKER
 from goldirham_filings.edgar import FilingRef
 from goldirham_filings.parse import PARSER_VERSION
+from goldirham_filings.retrieve import last_run
 
 FILLER = "Demand for accelerated computing grew. " * 40
 HTML = f"""<html><body>
@@ -102,4 +103,46 @@ def test_failed_filings_are_reported_and_skipped(
             "DELETE FROM filings WHERE accession = ANY(%s)",
             ([REF.accession, FlakyEdgar.BAD.accession],),
         )
+        fixture_conn.commit()
+
+
+class NewFilingEdgar(FlakyEdgar):
+    """One NVIDIA filing newer than anything in the fixture corpus."""
+
+    NEW = FilingRef("TEST-0000000003", 1045810, "10-Q", date(2026, 11, 20), date(2026, 10, 25),
+                    "new.htm")  # fmt: skip
+
+    def __init__(self) -> None:
+        self.since: dict[int, date] = {}
+
+    def filings_since(self, cik: int, since: date) -> list[FilingRef]:
+        self.since[cik] = since
+        return [self.NEW]
+
+
+@pytest.mark.db
+def test_update_indexes_only_newer_filings_and_records_the_run(
+    fixture_conn: psycopg.Connection[tuple[Any, ...]], tmp_path: Path
+) -> None:
+    edgar = NewFilingEdgar()
+    try:
+        report = ingest.update(fixture_conn, edgar, tmp_path,  # type: ignore[arg-type]
+                               [BY_TICKER["NVDA"], BY_TICKER["QCOM"]])  # fmt: skip
+        newest = fixture_conn.execute(
+            "SELECT max(filed_at) FROM filings WHERE cik = 1045810 AND accession <> %s",
+            (NewFilingEdgar.NEW.accession,),
+        ).fetchone()
+        assert newest is not None and edgar.since == {1045810: newest[0]}
+        assert [(r.ref.accession, r.status) for r in report.results] == [
+            ("TEST-0000000003", "indexed")
+        ]
+        run = last_run(fixture_conn)
+        assert run is not None
+        assert (run.command, run.filings_indexed, run.failures) == ("update", 1, 0)
+    finally:
+        fixture_conn.rollback()
+        fixture_conn.execute(
+            "DELETE FROM filings WHERE accession = %s", (NewFilingEdgar.NEW.accession,)
+        )
+        fixture_conn.execute("DELETE FROM index_runs")
         fixture_conn.commit()

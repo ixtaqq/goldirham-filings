@@ -1,12 +1,13 @@
 import argparse
 import json
+import os
 import sys
 from dataclasses import asdict
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any
 
-from goldirham_filings.companies import BY_TICKER
+from goldirham_filings.companies import BY_TICKER, TRACKED_COMPANIES
 from goldirham_filings.config import ROOT, Settings, settings
 from goldirham_filings.db import connect
 from goldirham_filings.edgar import EdgarClient, Form
@@ -21,7 +22,7 @@ from goldirham_filings.golden import (
     select,
     validate,
 )
-from goldirham_filings.ingest import M1_TICKERS, ingest
+from goldirham_filings.ingest import IngestReport, ingest, update
 from goldirham_filings.retrieve import Filters, Retriever, latest_filings
 
 GOLDEN_PATH = ROOT / "evals" / "golden.jsonl"
@@ -53,18 +54,67 @@ def _write_report(name: str, report: dict[str, Any], split: str = "", label: str
 
 
 def cmd_ingest(args: argparse.Namespace, cfg: Settings) -> None:
-    unknown = sorted(set(args.tickers) - set(BY_TICKER))
+    tickers = [t.upper() for t in args.tickers] if args.tickers else cfg.ingest_ticker_list
+    unknown = sorted(set(tickers) - set(BY_TICKER))
     if unknown:
         sys.exit(f"unknown tickers: {', '.join(unknown)}")
     client = EdgarClient(cfg.sec_user_agent, cfg.sec_requests_per_second)
     with connect() as conn:
-        report = ingest(conn, client, cfg.data_dir, [BY_TICKER[t] for t in args.tickers],
+        report = ingest(conn, client, cfg.data_dir, [BY_TICKER[t] for t in tickers],
                         {"10-K": args.ten_k, "10-Q": args.ten_q})  # fmt: skip
+    _exit_on_failures(report)
+
+
+def _exit_on_failures(report: IngestReport) -> None:
     print(report.summary())
     if report.failures:
         for f in report.failures:
             print(f"  {f.ticker} {f.accession or '(filing list)'}: {f.error}")
         sys.exit(f"{len(report.failures)} filings or filing lists failed; rerun to retry them")
+
+
+def cmd_update(args: argparse.Namespace, cfg: Settings) -> None:
+    """Index filings newer than the newest one indexed per company, then embed new chunks."""
+    unknown = sorted(set(args.tickers or []) - set(BY_TICKER))
+    if unknown:
+        sys.exit(f"unknown tickers: {', '.join(unknown)}")
+    client = EdgarClient(cfg.sec_user_agent, cfg.sec_requests_per_second)
+    with connect() as conn:
+        if args.tickers:
+            companies = [BY_TICKER[t] for t in args.tickers]
+        else:
+            indexed = {r[0] for r in conn.execute("SELECT DISTINCT cik FROM filings").fetchall()}
+            companies = [c for c in TRACKED_COMPANIES if c.cik_int in indexed]
+        report = update(conn, client, cfg.data_dir, companies)
+        embedder = OllamaEmbedder(cfg.embedding_model, cfg.ollama_url)
+        print(f"embedded {embed_missing(conn, embedder)} new chunks with {embedder.model}")
+        _load_facts(conn, client, companies)
+    _exit_on_failures(report)
+
+
+def _load_facts(conn: Any, client: EdgarClient, companies: list[Any]) -> None:
+    from goldirham_filings.xbrl import fetch_company_facts, parse_company_facts, store_facts
+
+    for company in companies:
+        if company.filer_type != "domestic":
+            continue
+        facts = parse_company_facts(company.cik_int, fetch_company_facts(client, company.cik_int))
+        print(f"facts    {company.ticker:5} {store_facts(conn, company.cik_int, facts)}")
+
+
+def cmd_facts(args: argparse.Namespace, cfg: Settings) -> None:
+    """Load XBRL company facts for the given or already-indexed companies."""
+    unknown = sorted(set(args.tickers or []) - set(BY_TICKER))
+    if unknown:
+        sys.exit(f"unknown tickers: {', '.join(unknown)}")
+    client = EdgarClient(cfg.sec_user_agent, cfg.sec_requests_per_second)
+    with connect() as conn:
+        if args.tickers:
+            companies = [BY_TICKER[t] for t in args.tickers]
+        else:
+            indexed = {r[0] for r in conn.execute("SELECT DISTINCT cik FROM filings").fetchall()}
+            companies = [c for c in TRACKED_COMPANIES if c.cik_int in indexed]
+        _load_facts(conn, client, companies)
 
 
 def cmd_embed(args: argparse.Namespace, cfg: Settings) -> None:
@@ -251,6 +301,27 @@ def cmd_fixtures(args: argparse.Namespace, cfg: Settings) -> None:
     print(f"exported {manifest['chunks']} chunks, {len(vectors)} question vectors")
 
 
+def mcp_config(server_command: PurePath) -> dict[str, Any]:
+    """Claude Desktop's mcpServers block for this install's stdio server."""
+    return {"mcpServers": {"goldirham-filings": {"command": str(server_command)}}}
+
+
+def server_command() -> Path:
+    """The console script installed next to this interpreter in the project's venv."""
+    name = "goldirham-filings-mcp.exe" if os.name == "nt" else "goldirham-filings-mcp"
+    return Path(sys.executable).parent / name
+
+
+def cmd_mcp_config(args: argparse.Namespace, cfg: Settings) -> None:
+    command = server_command()
+    if not command.exists():
+        sys.exit(f"{command} not found; run python -m uv sync in {ROOT}")
+    print(json.dumps(mcp_config(command), indent=2))
+    where = (r"%APPDATA%\Claude\claude_desktop_config.json" if os.name == "nt"
+             else "~/Library/Application Support/Claude/claude_desktop_config.json")  # fmt: skip
+    print(f"Merge this into {where}, then restart Claude Desktop.", file=sys.stderr)
+
+
 def cmd_doctor(args: argparse.Namespace, cfg: Settings) -> None:
     from goldirham_filings.doctor import format_report, run_checks
 
@@ -269,10 +340,18 @@ def main(argv: list[str] | None = None) -> None:
     commands = parser.add_subparsers(dest="command", required=True)
 
     p = commands.add_parser("ingest", help="fetch, parse and chunk filings")
-    p.add_argument("--tickers", nargs="+", default=list(M1_TICKERS))
+    p.add_argument("--tickers", nargs="+", help="default: INGEST_TICKERS from .env")
     p.add_argument("--10k", dest="ten_k", type=int, default=2)
     p.add_argument("--10q", dest="ten_q", type=int, default=6)
     p.set_defaults(func=cmd_ingest)
+
+    p = commands.add_parser("update", help="index filings newer than the index, then embed them")
+    p.add_argument("--tickers", nargs="+", help="default: every company already indexed")
+    p.set_defaults(func=cmd_update)
+
+    p = commands.add_parser("facts", help="load XBRL company facts from EDGAR")
+    p.add_argument("--tickers", nargs="+", help="default: every company already indexed")
+    p.set_defaults(func=cmd_facts)
 
     p = commands.add_parser("embed", help="embed chunks that have no vector yet")
     p.add_argument("--model", choices=sorted(EMBEDDING_MODELS))
@@ -325,6 +404,9 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--model", choices=sorted(EMBEDDING_MODELS))
     p.add_argument("--golden", type=Path, default=GOLDEN_PATH)
     p.set_defaults(func=cmd_fixtures)
+
+    p = commands.add_parser("mcp-config", help="print the Claude Desktop config for this install")
+    p.set_defaults(func=cmd_mcp_config)
 
     p = commands.add_parser("doctor", help="check the database, Ollama, models and settings")
     p.set_defaults(func=cmd_doctor)

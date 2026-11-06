@@ -8,7 +8,7 @@ from selectolax.lexbor import LexborHTMLParser, LexborNode
 
 from goldirham_filings.edgar import Form
 
-PARSER_VERSION = "3"
+PARSER_VERSION = "4"
 
 BLOCK_TAGS = frozenset(
     "address article blockquote body br center dd div dl dt h1 h2 h3 h4 h5 h6 hr li ol p pre "
@@ -60,6 +60,21 @@ SECTION_TITLES: dict[Form, dict[str, str]] = {
     },
 }
 REQUIRED_SECTIONS: dict[Form, tuple[str, ...]] = {"10-K": ("1A", "7"), "10-Q": ("I-2",)}
+# Body heading lines of filers that organize a 10-Q around a cross-reference index (Intel),
+# and the Items they stand for. The body shortens some table-of-contents entries (MD&A) and
+# opens the financial statements with page banners. Intel's 10-K has no risk-factors heading
+# in its text (the index points to page numbers), so 10-Ks keep the whole-document fallback.
+OWN_HEADINGS: dict[str, tuple[tuple[str, str], ...]] = {
+    "10-Q": (
+        (r"Financial Statements \| Consolidated Condensed Statements of .+", "I-1"),
+        (r"Management's Discussion and Analysis(?: \(MD&A\))?", "I-2"),
+        (r"Quantitative and Qualitative Disclosures About Market Risk", "I-3"),
+        (r"Controls and Procedures", "I-4"),
+        (r"Risk Factors", "II-1A"),
+        (r"Issuer Purchases of Equity Securities", "II-2"),
+        (r"Exhibits", "II-6"),
+    ),
+}
 # 10-K items and the 10-Q items that cover the same ground, so a 10-K can be compared with a
 # later 10-Q section by section.
 EQUIVALENT_SECTIONS = {
@@ -185,8 +200,9 @@ def split_sections(text: str, form: Form) -> list[Section]:
     of contents and is dropped.
 
     When a required section is absent or only a stub (some filers, such as Intel, use a
-    cross-reference index instead of Item headings), the whole document becomes one section
-    with item 'unknown' so no text is lost.
+    cross-reference index instead of Item headings), the filer's own headings are tried
+    (`split_by_own_headings`); if those also miss a required section, the whole document
+    becomes one section with item 'unknown' so no text is lost.
     """
     titles = SECTION_TITLES[form]
     candidates = _heading_candidates(text, form)
@@ -197,8 +213,34 @@ def split_sections(text: str, form: Form) -> list[Section]:
         end = chosen[i + 1].start if i + 1 < len(chosen) else len(text)
         sections.append(Section(heading.key, titles[heading.key], text[heading.start : end]))
     if missing_required(sections, form):
+        own = split_by_own_headings(text, form)
+        if own and not missing_required(own, form):
+            return own
         return [Section(UNKNOWN_SECTION, "Whole document", text)]
     return sections
+
+
+def split_by_own_headings(text: str, form: Form) -> list[Section] | None:
+    """Sections from a filer's own headings, for documents organized around a
+    cross-reference index (Intel). Its table of contents lists the headings and ends with
+    the index entry; in the body each heading is a line of its own. Text before the first
+    mapped heading (forward-looking statements, availability) is dropped like a cover page.
+    None when the form has no heading map or the table of contents is not found."""
+    headings = OWN_HEADINGS.get(form)
+    toc_end = re.search(rf"^Form {form} Cross-Reference Index$", text, re.M)
+    if not headings or toc_end is None:
+        return None
+    starts: list[tuple[int, str]] = []
+    for line, item in headings:
+        found = re.search(rf"^{line}$", text[toc_end.end() :], re.M)
+        if found:
+            starts.append((toc_end.end() + found.start(), item))
+    starts.sort()
+    titles = SECTION_TITLES[form]
+    return [
+        Section(item, titles[item], text[start : starts[i + 1][0] if i + 1 < len(starts) else None])
+        for i, (start, item) in enumerate(starts)
+    ]
 
 
 def _spans(candidates: list[_Heading], text_len: int) -> list[int]:

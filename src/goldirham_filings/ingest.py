@@ -8,6 +8,7 @@ so one bad document does not end the run; losing the database does.
 """
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -26,9 +27,6 @@ from goldirham_filings.parse import (
     split_sections,
 )
 
-M1_TICKERS = (
-    "NVDA", "AMD", "AVGO", "MSFT", "AMZN", "GOOGL", "META", "INTC", "MU", "AMAT", "LRCX", "KLAC",
-)  # fmt: skip
 DEFAULT_LIMITS: dict[Form, int] = {"10-K": 2, "10-Q": 6}
 
 
@@ -163,6 +161,8 @@ def ingest(
     companies: list[Company],
     limits: dict[Form, int],
 ) -> IngestReport:
+    """The latest filings of each form, up to `limits`, for each domestic company."""
+    started = datetime.now(UTC)
     upsert_companies(conn)
     results: list[IndexResult] = []
     failures: list[IngestFailure] = []
@@ -175,23 +175,81 @@ def ingest(
             failures.append(IngestFailure(company.ticker, "", describe_failure(error)))
             print(f"FAILED   {company.ticker:5} filing list: {failures[-1].error}")
             continue
-        for ref in refs:
-            path = raw_path(data_dir, ref)
-            try:
-                result = index_filing(conn, company, ref, fetch_raw(client, ref, path), path)
-            except psycopg.OperationalError:
-                raise
-            except Exception as error:
-                conn.rollback()
-                failures.append(IngestFailure(company.ticker, ref.accession,
-                                              describe_failure(error)))  # fmt: skip
-                print(f"FAILED   {company.ticker:5} {ref.form} {ref.period_end} "
-                      f"{ref.accession}: {failures[-1].error}")  # fmt: skip
-                continue
-            results.append(result)
-            print(
-                f"{result.status:8} {company.ticker:5} {ref.form} {ref.period_end} "
-                f"{ref.accession} sections={result.sections} chunks={result.chunks}"
-                + (f" MISSING={','.join(result.missing)}" if result.missing else "")
-            )
-    return IngestReport(results, failures)
+        _index_refs(conn, client, data_dir, company, refs, results, failures)
+    report = IngestReport(results, failures)
+    record_run(conn, "ingest", started, report)
+    return report
+
+
+def update(
+    conn: psycopg.Connection[tuple[Any, ...]],
+    client: EdgarClient,
+    data_dir: Path,
+    companies: list[Company],
+) -> IngestReport:
+    """Filings newer than the newest one indexed for each company. A company with nothing
+    indexed yet is skipped with a message: `filings ingest` chooses how far back to go."""
+    started = datetime.now(UTC)
+    latest = dict(
+        conn.execute("SELECT f.cik, max(f.filed_at) FROM filings f GROUP BY f.cik").fetchall()
+    )
+    results: list[IndexResult] = []
+    failures: list[IngestFailure] = []
+    for company in companies:
+        since = latest.get(company.cik_int)
+        if company.filer_type != "domestic" or since is None:
+            if company.filer_type == "domestic":
+                print(f"skipped  {company.ticker:5} nothing indexed yet; run filings ingest")
+            continue
+        try:
+            refs = client.filings_since(company.cik_int, since)
+        except Exception as error:
+            failures.append(IngestFailure(company.ticker, "", describe_failure(error)))
+            print(f"FAILED   {company.ticker:5} filing list: {failures[-1].error}")
+            continue
+        _index_refs(conn, client, data_dir, company, refs, results, failures)
+    report = IngestReport(results, failures)
+    record_run(conn, "update", started, report)
+    return report
+
+
+def record_run(
+    conn: psycopg.Connection[tuple[Any, ...]], command: str, started: datetime, report: IngestReport
+) -> None:
+    indexed = sum(r.status in ("indexed", "replaced") for r in report.results)
+    conn.execute(
+        "INSERT INTO index_runs (command, started_at, filings_indexed, failures)"
+        " VALUES (%s, %s, %s, %s)",
+        (command, started, indexed, len(report.failures)),
+    )
+    conn.commit()
+
+
+def _index_refs(
+    conn: psycopg.Connection[tuple[Any, ...]],
+    client: EdgarClient,
+    data_dir: Path,
+    company: Company,
+    refs: list[FilingRef],
+    results: list[IndexResult],
+    failures: list[IngestFailure],
+) -> None:
+    for ref in refs:
+        path = raw_path(data_dir, ref)
+        try:
+            result = index_filing(conn, company, ref, fetch_raw(client, ref, path), path)
+        except psycopg.OperationalError:
+            raise
+        except Exception as error:
+            conn.rollback()
+            failures.append(IngestFailure(company.ticker, ref.accession,
+                                          describe_failure(error)))  # fmt: skip
+            print(f"FAILED   {company.ticker:5} {ref.form} {ref.period_end} "
+                  f"{ref.accession}: {failures[-1].error}")  # fmt: skip
+            continue
+        results.append(result)
+        print(
+            f"{result.status:8} {company.ticker:5} {ref.form} {ref.period_end} "
+            f"{ref.accession} sections={result.sections} chunks={result.chunks}"
+            + (f" MISSING={','.join(result.missing)}" if result.missing else "")
+        )

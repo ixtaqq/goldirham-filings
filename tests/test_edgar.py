@@ -70,3 +70,22 @@ def test_submission_page_keeps_10k_and_10q_only_and_builds_document_url() -> Non
     assert refs[0].url == (
         "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000075/nvda-20260726.htm"
     )
+
+
+def test_filings_since_stops_at_the_first_older_filing_without_reading_older_pages() -> None:
+    recent = {
+        "form": ["10-Q", "8-K", "10-Q", "10-K"],
+        "accessionNumber": ["q3", "8k", "q2", "k"],
+        "filingDate": ["2026-11-20", "2026-11-01", "2026-08-26", "2026-02-25"],
+        "reportDate": ["2026-10-25", "", "2026-07-26", "2026-01-25"],
+        "primaryDocument": ["q3.htm", "8k.htm", "q2.htm", "k.htm"],
+    }
+    requested: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        requested.append(request.url.path)
+        return httpx.Response(200, json={"filings": {"recent": recent, "files": [{"name": "x"}]}})
+
+    refs = client(httpx.MockTransport(handle)).filings_since(1045810, date(2026, 8, 26))
+    assert [r.accession for r in refs] == ["q3", "q2"]
+    assert requested == ["/submissions/CIK0001045810.json"]

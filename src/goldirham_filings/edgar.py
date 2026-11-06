@@ -4,6 +4,7 @@ import time
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date
+from itertools import takewhile
 from typing import Any, Literal, cast
 
 import httpx
@@ -96,6 +97,11 @@ class EdgarClient:
             if not any(remaining.values()):
                 break
         return found
+
+    def filings_since(self, cik: int, since: date) -> list[FilingRef]:
+        """10-K and 10-Q filings filed on or after `since`, newest first. Submission pages
+        are ordered by filing date, so the walk stops at the first older filing."""
+        return list(takewhile(lambda ref: ref.filed_at >= since, self._iter_filings(cik)))
 
     def _iter_filings(self, cik: int) -> Iterator[FilingRef]:
         data = self.get_json(_submissions_url(cik))

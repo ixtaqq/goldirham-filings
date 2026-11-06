@@ -49,10 +49,11 @@ async def call(client: Client, tool: str, **arguments: Any) -> dict[str, Any]:
     return content
 
 
-async def test_all_five_tools_are_listed_read_only(client: Client) -> None:
+async def test_all_tools_are_listed_read_only(client: Client) -> None:
     tools = (await client.list_tools()).tools
     assert sorted(t.name for t in tools) == [
-        "answer_question", "compare_filings", "get_passage", "list_coverage", "search_filings",
+        "answer_question", "compare_filings", "get_financial_fact", "get_passage", "list_coverage",
+        "search_filings",
     ]  # fmt: skip
     assert all(t.annotations and t.annotations.read_only_hint for t in tools)
 
@@ -174,3 +175,22 @@ async def test_compare_filings_matches_sections_across_a_10k_and_a_10q(client: C
         "newer_accession": NVDA_10Q})  # fmt: skip
     assert unmatched.is_error
     assert "Section 1C has no equivalent in a 10-Q" in unmatched.content[0].text  # type: ignore[union-attr]
+
+
+async def test_list_coverage_reports_freshness(client: Client) -> None:
+    coverage = await call(client, "list_coverage")
+    nvda = next(c for c in coverage["companies"] if c["ticker"] == "NVDA")
+    assert nvda["latest_filed"] == "2026-08-26"
+    assert "last_run" in coverage
+
+
+async def test_get_financial_fact_explains_missing_facts_and_bad_arguments(client: Client) -> None:
+    missing = await client.call_tool("get_financial_fact", {"ticker": "NVDA", "concept": "revenue"})
+    assert missing.is_error
+    assert "No XBRL facts loaded for NVDA. Run: filings facts" in missing.content[0].text  # type: ignore[union-attr]
+    half = await client.call_tool(
+        "get_financial_fact", {"ticker": "NVDA", "concept": "revenue", "fiscal_year": 2027}
+    )
+    assert "Give fiscal_year and fiscal_period together" in half.content[0].text  # type: ignore[union-attr]
+    unknown = await client.call_tool("get_financial_fact", {"ticker": "XYZ", "concept": "revenue"})
+    assert "XYZ is not a tracked company" in unknown.content[0].text  # type: ignore[union-attr]

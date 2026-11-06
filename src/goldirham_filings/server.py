@@ -13,7 +13,7 @@ from mcp.types import ToolAnnotations
 from pydantic import BaseModel, Field
 
 from goldirham_filings.answer import Answerer, AnswerResult, Chat, OllamaChat
-from goldirham_filings.companies import TRACKED_COMPANIES
+from goldirham_filings.companies import BY_TICKER, TRACKED_COMPANIES
 from goldirham_filings.config import settings
 from goldirham_filings.db import connect
 from goldirham_filings.edgar import Form
@@ -25,6 +25,7 @@ from goldirham_filings.retrieve import (
     CoverageRow,
     FilingSummary,
     Filters,
+    IndexRun,
     Passage,
     PassageWithContext,
     Retriever,
@@ -33,8 +34,10 @@ from goldirham_filings.retrieve import (
     embedding_coverage,
     embedding_note,
     get_passage,
+    last_run,
     latest_filings,
 )
+from goldirham_filings.xbrl import ALIASES, FactLookup, FiscalPeriod, company_facts, lookup
 
 INSTRUCTIONS = """Search and cite the SEC 10-K and 10-Q filings of tracked AI-infrastructure
 companies. Call list_coverage first to see which companies, forms and periods are indexed.
@@ -59,6 +62,9 @@ class SearchResult(BaseModel):
 class Coverage(BaseModel):
     companies: list[CoverageRow]
     not_covered: list[str]
+    last_run: IndexRun | None = Field(
+        description="The last ingest or update run: when EDGAR was last checked"
+    )
 
 
 class Comparison(BaseModel):
@@ -216,10 +222,50 @@ def build_server(
                           changed=changed)  # fmt: skip
 
     @mcp.tool(annotations=READ_ONLY)
+    def get_financial_fact(
+        ticker: str,
+        concept: Annotated[
+            str,
+            Field(
+                description="XBRL concept such as 'Revenues' or 'NetIncomeLoss', or one of: "
+                + ", ".join(sorted(ALIASES))
+            ),
+        ],
+        fiscal_year: Annotated[
+            int | None, Field(description="The company's own fiscal year")
+        ] = None,
+        fiscal_period: Annotated[
+            FiscalPeriod | None, Field(description="'FY' for the 10-K year, 'Q1'..'Q3' for 10-Qs")
+        ] = None,
+        period_end: Annotated[
+            date | None, Field(description="Period end date, within a week")
+        ] = None,
+    ) -> FactLookup:
+        """Exact reported value of a financial concept from the company's XBRL data, with unit,
+        period and source filing. Give fiscal_year with fiscal_period, or a period_end, or
+        neither for the latest reported period. Values are as reported, never computed:
+        fourth quarters reported only inside the fiscal year are not derived."""
+        company = BY_TICKER.get(ticker.upper())
+        if company is None:
+            raise ToolError(f"{ticker} is not a tracked company.")
+        if (fiscal_year is None) != (fiscal_period is None):
+            raise ToolError("Give fiscal_year and fiscal_period together.")
+        with clear_errors(), open_conn() as conn:
+            facts = company_facts(conn, company.cik_int)
+        if not facts:
+            raise ToolError(f"No XBRL facts loaded for {company.ticker}. Run: filings facts")
+        try:
+            return lookup(facts, company.ticker, concept, fiscal_year, fiscal_period, period_end)
+        except ValueError as error:
+            raise ToolError(str(error)) from error
+
+    @mcp.tool(annotations=READ_ONLY)
     def list_coverage() -> Coverage:
-        """Indexed companies with filing counts and period ranges, and what is not covered."""
+        """Indexed companies with filing counts, period ranges and the newest filing date,
+        when the index was last updated from EDGAR, and what is not covered."""
         with clear_errors(), open_conn() as conn:
             rows = coverage(conn)
+            run = last_run(conn)
         foreign = [c.ticker for c in TRACKED_COMPANIES if c.filer_type == "foreign"]
         return Coverage(
             companies=[r for r in rows if sum(r.forms.values()) > 0],
@@ -228,6 +274,7 @@ def build_server(
                 *(f"{r.ticker}: tracked but not yet ingested" for r in rows
                   if r.filer_type == "domestic" and sum(r.forms.values()) == 0),
             ],
+            last_run=run,
         )  # fmt: skip
 
     return mcp

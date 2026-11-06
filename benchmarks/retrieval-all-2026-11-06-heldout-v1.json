@@ -1,0 +1,221 @@
+{
+  "golden": "evals\\heldout.jsonl",
+  "split": "all",
+  "label": "heldout-v1",
+  "runs": [
+    {
+      "model": "nomic-embed-text",
+      "mode": "hybrid",
+      "summary": {
+        "items": 21,
+        "recall_at_5": 0.5714,
+        "recall_at_8": 0.7619,
+        "recall_at_10": 0.8333,
+        "mrr": 0.5251,
+        "recall_at_10_by_type": {
+          "comparison": 0.1667,
+          "cross-company": 0.6667,
+          "lookup": 1.0,
+          "risk": 1.0
+        }
+      },
+      "items": [
+        {
+          "item_id": "heldout-lookup-001",
+          "item_type": "lookup",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.5,
+          "top_similarity": 0.7565578626313039
+        },
+        {
+          "item_id": "heldout-lookup-002",
+          "item_type": "lookup",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.5,
+          "top_similarity": 0.7867879613386048
+        },
+        {
+          "item_id": "heldout-lookup-003",
+          "item_type": "lookup",
+          "recall_at_5": 0.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.14285714285714285,
+          "top_similarity": 0.7210509485329083
+        },
+        {
+          "item_id": "heldout-lookup-004",
+          "item_type": "lookup",
+          "recall_at_5": 0.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.125,
+          "top_similarity": 0.7518420819859913
+        },
+        {
+          "item_id": "heldout-lookup-005",
+          "item_type": "lookup",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.8555425405503292
+        },
+        {
+          "item_id": "heldout-lookup-006",
+          "item_type": "lookup",
+          "recall_at_5": 0.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.16666666666666666,
+          "top_similarity": 0.7522146329943997
+        },
+        {
+          "item_id": "heldout-lookup-007",
+          "item_type": "lookup",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.764796551514543
+        },
+        {
+          "item_id": "heldout-lookup-008",
+          "item_type": "lookup",
+          "recall_at_5": 0.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.125,
+          "top_similarity": 0.7343247132525715
+        },
+        {
+          "item_id": "heldout-lookup-009",
+          "item_type": "lookup",
+          "recall_at_5": 0.0,
+          "recall_at_8": 0.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.1,
+          "top_similarity": 0.6721887187845577
+        },
+        {
+          "item_id": "heldout-lookup-010",
+          "item_type": "lookup",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.780317701858313
+        },
+        {
+          "item_id": "heldout-risk-001",
+          "item_type": "risk",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.5,
+          "top_similarity": 0.7452026231647587
+        },
+        {
+          "item_id": "heldout-risk-002",
+          "item_type": "risk",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.6709083711018549
+        },
+        {
+          "item_id": "heldout-risk-003",
+          "item_type": "risk",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.6817993304968872
+        },
+        {
+          "item_id": "heldout-risk-004",
+          "item_type": "risk",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.6920657316857762
+        },
+        {
+          "item_id": "heldout-risk-005",
+          "item_type": "risk",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.7515296488088913
+        },
+        {
+          "item_id": "heldout-comparison-001",
+          "item_type": "comparison",
+          "recall_at_5": 0.0,
+          "recall_at_8": 0.0,
+          "recall_at_10": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_similarity": 0.7949425470968756
+        },
+        {
+          "item_id": "heldout-comparison-002",
+          "item_type": "comparison",
+          "recall_at_5": 0.0,
+          "recall_at_8": 0.0,
+          "recall_at_10": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_similarity": 0.7550108310638369
+        },
+        {
+          "item_id": "heldout-comparison-003",
+          "item_type": "comparison",
+          "recall_at_5": 0.5,
+          "recall_at_8": 0.5,
+          "recall_at_10": 0.5,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.723216695977264
+        },
+        {
+          "item_id": "heldout-cross-company-001",
+          "item_type": "cross-company",
+          "recall_at_5": 0.5,
+          "recall_at_8": 0.5,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.3333333333333333,
+          "top_similarity": 0.6980937786903125
+        },
+        {
+          "item_id": "heldout-cross-company-002",
+          "item_type": "cross-company",
+          "recall_at_5": 0.5,
+          "recall_at_8": 0.5,
+          "recall_at_10": 0.5,
+          "reciprocal_rank": 0.3333333333333333,
+          "top_similarity": 0.7555716011182995
+        },
+        {
+          "item_id": "heldout-cross-company-003",
+          "item_type": "cross-company",
+          "recall_at_5": 0.5,
+          "recall_at_8": 0.5,
+          "recall_at_10": 0.5,
+          "reciprocal_rank": 0.2,
+          "top_similarity": 0.7351285754029501
+        }
+      ],
+      "unanswerable_top_similarity": [
+        0.7152065547931712,
+        0.770104270558787,
+        0.8210707350716404,
+        0.7413333037694435
+      ]
+    }
+  ]
+}
