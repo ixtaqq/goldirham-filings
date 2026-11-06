@@ -11,6 +11,7 @@ from goldirham_filings.config import ROOT, Settings, settings
 from goldirham_filings.db import connect
 from goldirham_filings.edgar import EdgarClient, Form
 from goldirham_filings.embed import EMBEDDING_MODELS, OllamaEmbedder, embed_missing
+from goldirham_filings.errors import DependencyError, database_errors
 from goldirham_filings.golden import (
     GoldItem,
     load_golden,
@@ -57,10 +58,13 @@ def cmd_ingest(args: argparse.Namespace, cfg: Settings) -> None:
         sys.exit(f"unknown tickers: {', '.join(unknown)}")
     client = EdgarClient(cfg.sec_user_agent, cfg.sec_requests_per_second)
     with connect() as conn:
-        results = ingest(conn, client, cfg.data_dir, [BY_TICKER[t] for t in args.tickers],
-                         {"10-K": args.ten_k, "10-Q": args.ten_q})  # fmt: skip
-    missing = [r for r in results if r.missing]
-    print(f"{len(results)} filings; {len(missing)} with missing required sections")
+        report = ingest(conn, client, cfg.data_dir, [BY_TICKER[t] for t in args.tickers],
+                        {"10-K": args.ten_k, "10-Q": args.ten_q})  # fmt: skip
+    print(report.summary())
+    if report.failures:
+        for f in report.failures:
+            print(f"  {f.ticker} {f.accession or '(filing list)'}: {f.error}")
+        sys.exit(f"{len(report.failures)} filings or filing lists failed; rerun to retry them")
 
 
 def cmd_embed(args: argparse.Namespace, cfg: Settings) -> None:
@@ -167,7 +171,8 @@ def cmd_eval_full(args: argparse.Namespace, cfg: Settings) -> None:
         answers = run_answers(answerer, chat, items)
     report = {
         "config": {"embedding_model": cfg.embedding_model, "answer_model": cfg.answer_model,
-                   "abstain_min_similarity": cfg.abstain_min_similarity, "k": answerer.k},
+                   "abstain_min_similarity": cfg.abstain_min_similarity, "k": answerer.k,
+                   "drop_unsupported_numbers": answerer.drop_unsupported_numbers},
         "golden": {"path": str(args.golden), "split": args.split, "label": args.label,
                    "items": len(items),
                    "human_checked": sum(i.checked_by is not None for i in items)},
@@ -325,7 +330,12 @@ def main(argv: list[str] | None = None) -> None:
     p.set_defaults(func=cmd_doctor)
 
     args = parser.parse_args(argv)
-    args.func(args, settings())
+    cfg = settings()
+    try:
+        with database_errors(cfg.database_url):
+            args.func(args, cfg)
+    except DependencyError as error:
+        sys.exit(f"error: {error}")
 
 
 if __name__ == "__main__":

@@ -148,6 +148,7 @@ class AnswerScore:
     abstained: bool
     citation_precision: float | None
     unsupported_numbers: int
+    unsupported_periods: int
     verdict: Verdict
     answer: str
     gold_in_passages: bool
@@ -173,6 +174,7 @@ def score_answer(item: GoldItem, result: AnswerResult, verdict: Verdict) -> Answ
         abstained=abstained,
         citation_precision=precision,
         unsupported_numbers=sum(len(s.unsupported_numbers) for s in result.sentences),
+        unsupported_periods=sum(len(s.unsupported_periods) for s in result.sentences),
         verdict=verdict,
         answer=" ".join(s.text for s in result.sentences),
         gold_in_passages=any(span_hit(p, s) for p in result.passages for s in item.gold_spans),
@@ -197,6 +199,7 @@ def summarize_answers(scores: Sequence[AnswerScore]) -> dict[str, Any]:
         "false_declines_with_gold_in_passages": sum(s.gold_in_passages for s in declined),
         "citation_precision": round(mean(precisions), 4) if precisions else None,
         "answers_with_unsupported_numbers": sum(s.unsupported_numbers > 0 for s in scores),
+        "answers_with_unsupported_periods": sum(s.unsupported_periods > 0 for s in scores),
         "abstention_accuracy": (
             round(mean(s.abstained for s in unanswerable), 4) if unanswerable else None
         ),

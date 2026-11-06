@@ -7,6 +7,8 @@ import httpx
 import numpy as np
 import psycopg
 
+from goldirham_filings.errors import ollama_error
+
 
 @dataclass(frozen=True)
 class EmbeddingModel:
@@ -36,16 +38,25 @@ class Embedder(Protocol):
 
 
 class OllamaEmbedder:
-    def __init__(self, model: str, base_url: str, timeout: float = 300.0) -> None:
+    def __init__(
+        self,
+        model: str,
+        base_url: str,
+        timeout: float = 300.0,
+        transport: httpx.BaseTransport | None = None,
+    ) -> None:
         self.model = model
         self._spec = EMBEDDING_MODELS[model]
-        self._http = httpx.Client(base_url=base_url, timeout=timeout)
+        self._http = httpx.Client(base_url=base_url, timeout=timeout, transport=transport)
 
     def _embed(self, inputs: list[str]) -> list[np.ndarray]:
-        response = self._http.post(
-            "/api/embed", json={"model": self.model, "input": inputs, "truncate": True}
-        )
-        response.raise_for_status()
+        try:
+            response = self._http.post(
+                "/api/embed", json={"model": self.model, "input": inputs, "truncate": True}
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as error:
+            raise ollama_error(error, str(self._http.base_url).rstrip("/"), self.model) from error
         return [np.asarray(v, dtype=np.float32) for v in response.json()["embeddings"]]
 
     def embed_documents(self, texts: list[str]) -> list[np.ndarray]:

@@ -21,7 +21,7 @@ RECENCY_DECAY = 0.9
 
 PASSAGE_COLUMNS = """
     c.id, co.ticker, co.name, f.form, f.accession, f.period_end, f.filed_at, s.item, s.title,
-    c.start_char, c.end_char, c.text, f.source_url
+    c.start_char, c.end_char, c.text, f.source_url, f.fiscal_year, f.fiscal_period
 """
 PASSAGE_FROM = """
     chunks c
@@ -54,6 +54,8 @@ class Passage(BaseModel):
     end_char: int
     text: str
     source_url: str
+    fiscal_year: int | None = None
+    fiscal_period: str | None = None
     score: float = 0.0
     similarity: float | None = None
 
@@ -135,7 +137,8 @@ def _where(filters: Filters) -> tuple[str, list[Any]]:
 
 def _passage(row: Sequence[Any], score: float = 0.0) -> Passage:
     keys = ("chunk_id", "ticker", "company", "form", "accession", "period_end", "filed_at",
-            "section", "section_title", "start_char", "end_char", "text", "source_url")  # fmt: skip
+            "section", "section_title", "start_char", "end_char", "text", "source_url",
+            "fiscal_year", "fiscal_period")  # fmt: skip
     return Passage(**dict(zip(keys, row, strict=True)), score=score)
 
 
@@ -400,3 +403,24 @@ def changed_passages(
         )
         for newer_id, older_id, similarity in rows
     ]
+
+
+def embedding_coverage(conn: psycopg.Connection[tuple[Any, ...]], model: str) -> tuple[int, int]:
+    """(chunks with a vector for this model, all chunks)."""
+    row = conn.execute(
+        "SELECT count(e.chunk_id), count(*) FROM chunks c"
+        " LEFT JOIN embeddings e ON e.chunk_id = c.id AND e.model = %s",
+        (model,),
+    ).fetchone()
+    return (int(row[0]), int(row[1])) if row else (0, 0)
+
+
+def embedding_note(model: str, embedded: int, chunks: int) -> str | None:
+    """Semantic search only sees chunks with a vector; say so when some have none."""
+    if embedded >= chunks:
+        return None
+    if embedded == 0:
+        return (f"No chunk has a {model} vector, so search is keyword-only and similarity "
+                "scores are missing. Run: filings embed")  # fmt: skip
+    return (f"{chunks - embedded} of {chunks} chunks have no {model} vector; semantic search "
+            "skips them and finds them by keyword only. Run: filings embed")  # fmt: skip

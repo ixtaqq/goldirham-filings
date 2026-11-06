@@ -7,6 +7,7 @@ import httpx
 import psycopg
 
 from goldirham_filings.config import ROOT, Settings
+from goldirham_filings.retrieve import embedding_coverage
 
 EXAMPLE_USER_AGENT = "Your Name you@example.com"
 
@@ -116,17 +117,8 @@ def _database_checks(cfg: Settings) -> list[Check]:
         if not current:
             checks.append(Check("embeddings", False, "not checked: schema not migrated"))
             return checks
-        chunks = conn.execute("SELECT count(*) FROM chunks").fetchone()
-        embedded = conn.execute(
-            "SELECT count(*) FROM embeddings WHERE model = %s", (cfg.embedding_model,)
-        ).fetchone()
-        checks.append(
-            embedding_check(
-                cfg.embedding_model,
-                int(embedded[0]) if embedded else 0,
-                int(chunks[0]) if chunks else 0,
-            )
-        )
+        embedded, chunks = embedding_coverage(conn, cfg.embedding_model)
+        checks.append(embedding_check(cfg.embedding_model, embedded, chunks))
     return checks
 
 

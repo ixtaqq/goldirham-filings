@@ -1,17 +1,22 @@
 """Cited answers from retrieved passages, or an abstention.
 
 The model returns JSON (answerable flag, sentences with passage numbers). Code then enforces
-the contract: citations must name supplied passages, uncited sentences are removed, and any
-number not found in a cited passage is flagged.
+the contract: citations must name supplied passages, uncited sentences are removed, a
+sentence with a number not found in its cited passages (usually a computed figure) is
+removed, and a period or date that matches neither the cited filing nor its text is flagged.
 """
 
 import re
+from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any, Literal, Protocol
 
 import httpx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
+from goldirham_filings.errors import ollama_error
 from goldirham_filings.retrieve import Filters, Passage
+from goldirham_filings.scope import DATE, PERIOD_END_TOLERANCE_DAYS
 
 DISCLAIMER = "Summarizes SEC filings in the index. Not investment advice."
 NO_ANSWER = "The filings in the index don't answer this."
@@ -31,6 +36,12 @@ Rules:
   sentences."""
 
 
+RETRY_REMINDER = (
+    "Your previous reply was not valid JSON for the required schema. Reply with one complete "
+    'JSON object: {"answerable": true or false, "sentences": [{"text": ..., "citations": [...]}]}.'
+)
+
+
 class ModelSentence(BaseModel):
     text: str
     citations: list[int]
@@ -45,6 +56,7 @@ class CitedSentence(BaseModel):
     text: str
     citations: list[int]
     unsupported_numbers: list[str] = Field(default_factory=list)
+    unsupported_periods: list[str] = Field(default_factory=list)
 
 
 class AnswerResult(BaseModel):
@@ -65,26 +77,35 @@ class Chat(Protocol):
 
 
 class OllamaChat:
-    def __init__(self, model: str, base_url: str, timeout: float = 300.0) -> None:
+    def __init__(
+        self,
+        model: str,
+        base_url: str,
+        timeout: float = 300.0,
+        transport: httpx.BaseTransport | None = None,
+    ) -> None:
         self.model = model
-        self._http = httpx.Client(base_url=base_url, timeout=timeout)
+        self._http = httpx.Client(base_url=base_url, timeout=timeout, transport=transport)
 
     def complete_json(self, system: str, user: str, schema: dict[str, Any]) -> str:
-        response = self._http.post(
-            "/api/chat",
-            json={
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-                "format": schema,
-                "stream": False,
-                "think": False,
-                "options": {"temperature": 0, "num_ctx": 8192},
-            },
-        )
-        response.raise_for_status()
+        try:
+            response = self._http.post(
+                "/api/chat",
+                json={
+                    "model": self.model,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
+                    ],
+                    "format": schema,
+                    "stream": False,
+                    "think": False,
+                    "options": {"temperature": 0, "num_ctx": 8192},
+                },
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as error:
+            raise ollama_error(error, str(self._http.base_url).rstrip("/"), self.model) from error
         return str(response.json()["message"]["content"])
 
 
@@ -105,7 +126,7 @@ def build_prompt(question: str, passages: list[Passage]) -> str:
 NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
 NOT_A_QUANTITY = re.compile(
     r"\b(?:Form )?10-[KQ]\b|\bItem \d+[A-C]?\b|\b[A-Z]{1,4}\d+[A-Z]?\b"
-    r"|\bfiscal(?: year)? \d{4}\b|\bQ[1-4] \d{4}\b"
+    r"|\bfiscal(?: year)? \d{4}\b|\bQ[1-4] \d{4}\b|" + DATE
 )
 
 
@@ -119,6 +140,77 @@ def _numbers(text: str) -> list[str]:
     numbers, product codes like MI308, and period names like "fiscal 2026" that identify
     the source rather than state a figure."""
     return [_normalize(n) for n in NUMBER.findall(NOT_A_QUANTITY.sub(" ", text))]
+
+
+QUARTERS = {"first": 1, "second": 2, "third": 3, "fourth": 4}
+PERIOD_NAME = re.compile(
+    r"\bQ(?P<q>[1-4])\s+(?:of\s+)?(?P<qf>fiscal(?:\s+year)?\s+|FY\s?)?(?P<qy>\d{4})\b"
+    r"|\b(?P<w>first|second|third|fourth)\s+(?:fiscal\s+)?quarter\s+of\s+"
+    r"(?P<wf>fiscal(?:\s+year)?\s+)?(?P<wy>\d{4})\b"
+    r"|\b(?:fiscal(?:\s+years?)?\s+|FY\s?)(?P<fy>\d{4}(?:(?:,\s*|\s+and\s+|,\s+and\s+)\d{4})*)\b",
+    re.I,
+)
+
+
+@dataclass(frozen=True)
+class PeriodName:
+    text: str
+    year: int
+    quarter: int | None
+    fiscal: bool
+
+
+def period_names(text: str) -> list[PeriodName]:
+    """'Q2 2026', 'second quarter of fiscal 2027', 'fiscal 2025' and 'fiscal years 2026 and
+    2025' as (year, quarter, fiscal). A list of fiscal years gives one name per year."""
+    names = []
+    for m in PERIOD_NAME.finditer(text):
+        if m["q"]:
+            names.append(PeriodName(m[0], int(m["qy"]), int(m["q"]), bool(m["qf"])))
+        elif m["w"]:
+            fiscal = "fiscal" in m[0].lower()
+            names.append(PeriodName(m[0], int(m["wy"]), QUARTERS[m["w"].lower()], fiscal))
+        else:
+            names += [PeriodName(m[0], int(y), None, True) for y in re.findall(r"\d{4}", m["fy"])]
+    return names
+
+
+def dates_named(text: str) -> list[tuple[str, date]]:
+    """Full dates such as 'June 30, 2026'; impossible dates are ignored."""
+    found = []
+    for m in re.finditer(DATE, text):
+        try:
+            found.append((m[0], datetime.strptime(f"{m[1]} {m[2]} {m[3]}", "%B %d %Y").date()))
+        except ValueError:
+            continue
+    return found
+
+
+def date_supported(day: date, passage: Passage) -> bool:
+    """A date is supported by the cited filing's period end or by a date the passage names."""
+    end = passage.period_end
+    if end is not None and abs((end - day).days) <= PERIOD_END_TOLERANCE_DAYS:
+        return True
+    return any(named == day for _, named in dates_named(passage.text))
+
+
+def period_supported(name: PeriodName, passage: Passage) -> bool:
+    """A period name is supported by the cited filing's own fiscal period, by its calendar
+    period when the name does not say fiscal, or by a period the passage text names."""
+    quarter = f"Q{name.quarter}" if name.quarter else None
+    if passage.fiscal_year == name.year and (
+        quarter is None or passage.fiscal_period == quarter
+        or (name.quarter == 4 and passage.fiscal_period == "FY")
+    ):  # fmt: skip
+        return True
+    end = passage.period_end
+    if not name.fiscal and end is not None and end.year == name.year:
+        if name.quarter is None or (end.month - 1) // 3 + 1 == name.quarter:
+            return True
+    return any(
+        n.year == name.year and (name.quarter is None or n.quarter == name.quarter)
+        for n in period_names(passage.text)
+    )
 
 
 def check_answer(
@@ -143,19 +235,34 @@ def check_answer(
         unsupported = [n for n in _numbers(sentence.text) if n not in cited_numbers]
         if unsupported:
             notes.append(f"numbers not found in cited passages: {', '.join(unsupported)}")
+        periods = list(dict.fromkeys(
+            [n.text for n in period_names(sentence.text)
+             if not any(period_supported(n, passages[c - 1]) for c in valid)]
+            + [text for text, day in dates_named(sentence.text)
+               if not any(date_supported(day, passages[c - 1]) for c in valid)]
+        ))  # fmt: skip
+        if periods:
+            notes.append(f"periods not matching the cited filings: {', '.join(periods)}")
         kept.append(CitedSentence(text=sentence.text, citations=valid,
-                                  unsupported_numbers=unsupported))  # fmt: skip
+                                  unsupported_numbers=unsupported,
+                                  unsupported_periods=periods))  # fmt: skip
     return kept, notes
 
 
 class Answerer:
     def __init__(
-        self, retriever: Searcher, chat: Chat, k: int = 8, min_similarity: float = 0.0
+        self,
+        retriever: Searcher,
+        chat: Chat,
+        k: int = 8,
+        min_similarity: float = 0.0,
+        drop_unsupported_numbers: bool = True,
     ) -> None:
         self.retriever = retriever
         self.chat = chat
         self.k = k
         self.min_similarity = min_similarity
+        self.drop_unsupported_numbers = drop_unsupported_numbers
 
     def answer(self, question: str, filters: Filters | None = None) -> AnswerResult:
         passages = self.retriever.search(question, filters, k=self.k)
@@ -164,20 +271,37 @@ class Answerer:
         best = max((p.similarity or 0.0 for p in passages), default=0.0)
         if best < self.min_similarity:
             return _abstain(question, passages, f"retrieval similarity {best:.3f} below threshold")
-        raw = ModelAnswer.model_validate_json(
-            self.chat.complete_json(
-                SYSTEM_PROMPT, build_prompt(question, passages), ModelAnswer.model_json_schema()
-            )
-        )
+        raw = self._model_answer(question, passages)
+        if raw is None:
+            return _abstain(question, passages, "model returned malformed output twice")
         if not raw.answerable:
             return _abstain(question, passages, "model reported the passages do not answer it")
         sentences, notes = check_answer(raw, passages)
+        if self.drop_unsupported_numbers:
+            notes += [f"removed sentence with numbers not in its cited passages: {s.text!r}"
+                      for s in sentences if s.unsupported_numbers]  # fmt: skip
+            sentences = [s for s in sentences if not s.unsupported_numbers]
         if not sentences:
             return _abstain(question, passages, "no sentence survived the citation check", notes)
         return AnswerResult(
             status="answered", question=question, sentences=sentences, passages=passages,
             notes=notes,
         )  # fmt: skip
+
+    def _model_answer(self, question: str, passages: list[Passage]) -> ModelAnswer | None:
+        """The model's answer, asked a second time if the first reply is not valid JSON for
+        the schema; None if neither is. Replies are deterministic (temperature 0), so the
+        retry says what went wrong instead of repeating the same request."""
+        prompt = build_prompt(question, passages)
+        for retry in (False, True):
+            if retry:
+                prompt += f"\n\n{RETRY_REMINDER}"
+            reply = self.chat.complete_json(SYSTEM_PROMPT, prompt, ModelAnswer.model_json_schema())
+            try:
+                return ModelAnswer.model_validate_json(reply)
+            except ValidationError:
+                continue
+        return None
 
 
 def _abstain(

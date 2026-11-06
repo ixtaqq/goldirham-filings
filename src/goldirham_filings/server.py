@@ -1,6 +1,8 @@
 """Read-only MCP server over the filing index (stdio transport)."""
 
-from collections.abc import Callable
+import sys
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import date
 from typing import Annotated, Any
 
@@ -16,6 +18,7 @@ from goldirham_filings.config import settings
 from goldirham_filings.db import connect
 from goldirham_filings.edgar import Form
 from goldirham_filings.embed import Embedder, OllamaEmbedder
+from goldirham_filings.errors import DependencyError, database_errors
 from goldirham_filings.retrieve import (
     ChangedPassage,
     CoverageRow,
@@ -26,6 +29,8 @@ from goldirham_filings.retrieve import (
     Retriever,
     changed_passages,
     coverage,
+    embedding_coverage,
+    embedding_note,
     get_passage,
     latest_filings,
 )
@@ -47,6 +52,7 @@ PeriodTo = Annotated[date | None, Field(description="Latest fiscal period end, i
 
 class SearchResult(BaseModel):
     passages: list[Passage]
+    notes: list[str] = Field(default_factory=list)
 
 
 class Coverage(BaseModel):
@@ -66,6 +72,16 @@ class Comparison(BaseModel):
         description="Without focus: newer passages least similar to anything in the older "
         "section, each with its closest older passage"
     )
+
+
+@contextmanager
+def clear_errors() -> Iterator[None]:
+    """Database and Ollama failures reach the client as a message saying what to fix."""
+    try:
+        with database_errors(settings().database_url):
+            yield
+    except DependencyError as error:
+        raise ToolError(str(error)) from error
 
 
 def build_server(
@@ -90,8 +106,10 @@ def build_server(
         and character offsets for citation."""
         filters = Filters(tickers=tickers, forms=forms, period_from=period_from,
                           period_to=period_to, sections=sections)  # fmt: skip
-        with open_conn() as conn:
-            return SearchResult(passages=Retriever(conn, embedder).search(query, filters, k))
+        with clear_errors(), open_conn() as conn:
+            passages = Retriever(conn, embedder).search(query, filters, k)
+            note = embedding_note(embedder.model, *embedding_coverage(conn, embedder.model))
+        return SearchResult(passages=passages, notes=[note] if note else [])
 
     @mcp.tool(name="get_passage", annotations=READ_ONLY)
     def get_passage_tool(
@@ -106,7 +124,7 @@ def build_server(
         offsets into that section (as returned by search_filings), with surrounding text and
         the EDGAR URL."""
         try:
-            with open_conn() as conn:
+            with clear_errors(), open_conn() as conn:
                 found = get_passage(conn, chunk_id, accession, section, start_char, end_char,
                                     context_chars)  # fmt: skip
         except ValueError as error:
@@ -127,9 +145,11 @@ def build_server(
         (1-based, into `passages`). Abstains when the filings do not support an answer."""
         filters = Filters(tickers=tickers, forms=forms, period_from=period_from,
                           period_to=period_to)  # fmt: skip
-        with open_conn() as conn:
+        with clear_errors(), open_conn() as conn:
             answerer = Answerer(Retriever(conn, embedder), chat, min_similarity=min_similarity)
-            return answerer.answer(question, filters)
+            result = answerer.answer(question, filters)
+            note = embedding_note(embedder.model, *embedding_coverage(conn, embedder.model))
+        return result.model_copy(update={"notes": [*result.notes, note]}) if note else result
 
     @mcp.tool(annotations=READ_ONLY)
     def compare_filings(
@@ -144,7 +164,7 @@ def build_server(
         """Evidence from one section of two filings (default: the latest two of the form).
         With focus, the top passages on that topic from each filing. Without focus, the
         newer filing's passages that changed most, each paired with its closest older one."""
-        with open_conn() as conn:
+        with clear_errors(), open_conn() as conn:
             if older_accession and newer_accession:
                 pair = {f.accession: f for f in latest_filings(conn, ticker, form, limit=50)}
                 missing = [a for a in (older_accession, newer_accession) if a not in pair]
@@ -177,7 +197,7 @@ def build_server(
     @mcp.tool(annotations=READ_ONLY)
     def list_coverage() -> Coverage:
         """Indexed companies with filing counts and period ranges, and what is not covered."""
-        with open_conn() as conn:
+        with clear_errors(), open_conn() as conn:
             rows = coverage(conn)
         foreign = [c.ticker for c in TRACKED_COMPANIES if c.filer_type == "foreign"]
         return Coverage(
@@ -192,8 +212,22 @@ def build_server(
     return mcp
 
 
+def startup_warnings(
+    open_conn: Callable[[], psycopg.Connection[tuple[Any, ...]]], model: str, database_url: str
+) -> list[str]:
+    """Problems worth seeing in the client's server log before the first tool call."""
+    try:
+        with database_errors(database_url), open_conn() as conn:
+            note = embedding_note(model, *embedding_coverage(conn, model))
+    except DependencyError as error:
+        return [str(error)]
+    return [note] if note else []
+
+
 def main() -> None:
     cfg = settings()
+    for warning in startup_warnings(connect, cfg.embedding_model, cfg.database_url):
+        print(f"goldirham-filings: warning: {warning}", file=sys.stderr)
     server = build_server(
         connect,
         OllamaEmbedder(cfg.embedding_model, cfg.ollama_url),

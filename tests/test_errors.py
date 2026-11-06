@@ -1,0 +1,94 @@
+import httpx
+import psycopg
+import pytest
+from mcp import Client
+
+from goldirham_filings.answer import OllamaChat
+from goldirham_filings.cli import main
+from goldirham_filings.embed import OllamaEmbedder
+from goldirham_filings.errors import DependencyError, database_error
+from goldirham_filings.server import build_server
+
+URL = "http://127.0.0.1:11434"
+
+
+def refusing(request: httpx.Request) -> httpx.Response:
+    raise httpx.ConnectError("connection refused", request=request)
+
+
+def timing_out(request: httpx.Request) -> httpx.Response:
+    raise httpx.ReadTimeout("timed out", request=request)
+
+
+def model_missing(request: httpx.Request) -> httpx.Response:
+    return httpx.Response(404, json={"error": "model 'qwen3:8b' not found"})
+
+
+def server_error(request: httpx.Request) -> httpx.Response:
+    return httpx.Response(500, json={"error": "out of memory"})
+
+
+@pytest.mark.parametrize(
+    ("handler", "expected"),
+    [
+        (refusing, "Ollama is not reachable at http://127.0.0.1:11434"),
+        (timing_out, "did not respond in time"),
+        (model_missing, "not pulled. Run: ollama pull qwen3:8b"),
+        (server_error, "returned HTTP 500 for qwen3:8b"),
+    ],
+)
+def test_ollama_failures_become_dependency_errors(handler: object, expected: str) -> None:
+    transport = httpx.MockTransport(handler)  # type: ignore[arg-type]
+    chat = OllamaChat("qwen3:8b", URL, transport=transport)
+    with pytest.raises(DependencyError, match=expected):
+        chat.complete_json("system", "user", {})
+    embedder = OllamaEmbedder("nomic-embed-text", URL, transport=transport)
+    with pytest.raises(DependencyError):
+        embedder.embed_query("x")
+
+
+def test_database_errors_name_the_fix_without_the_password() -> None:
+    url = "postgresql://filings:secret@127.0.0.1:5442/filings"
+    down = database_error(psycopg.OperationalError("connection refused"), url)
+    assert "127.0.0.1:5442/filings is not reachable" in str(down)
+    assert "docker compose up -d --wait" in str(down)
+    assert "secret" not in str(down)
+    empty = database_error(psycopg.errors.UndefinedTable("relation chunks"), url)
+    assert "alembic upgrade head" in str(empty)
+
+
+def unreachable_database() -> psycopg.Connection[tuple[object, ...]]:
+    raise psycopg.OperationalError("connection refused")
+
+
+class NoChat:
+    def complete_json(self, system: str, user: str, schema: dict[str, object]) -> str:
+        raise AssertionError("not reached")
+
+
+@pytest.mark.anyio
+async def test_tools_report_a_down_database_as_a_clear_error() -> None:
+    embedder = OllamaEmbedder("nomic-embed-text", URL, transport=httpx.MockTransport(refusing))
+    server = build_server(unreachable_database, embedder, NoChat())
+    async with Client(server) as client:
+        for tool, arguments in [
+            ("search_filings", {"query": "export controls"}),
+            ("answer_question", {"question": "What changed?"}),
+            ("list_coverage", {}),
+        ]:
+            result = await client.call_tool(tool, arguments)
+            assert result.is_error
+            text = result.content[0].text  # type: ignore[union-attr]
+            assert "is not reachable. Start Docker Desktop" in text, text
+
+
+def test_cli_exits_with_the_message_when_ollama_is_down(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise DependencyError("Ollama is not reachable at http://x. Start Ollama.")
+
+    monkeypatch.setattr("goldirham_filings.cli.cmd_search", fail)
+    with pytest.raises(SystemExit) as exited:
+        main(["search", "anything"])
+    assert exited.value.code == "error: Ollama is not reachable at http://x. Start Ollama."

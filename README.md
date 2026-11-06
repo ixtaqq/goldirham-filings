@@ -40,7 +40,8 @@ golden set ─► eval harness ─► CI retrieval gate + dated reports in bench
   ranking leans mildly toward each company's newer filings.
 - **Answer.** `qwen3:8b` gets numbered passages and must return JSON in which every sentence
   cites passages. Code then drops citations to passages it never supplied, removes uncited
-  sentences, and flags any number missing from the cited passages. It abstains when the model
+  sentences, removes any sentence with a number missing from its cited passages, and flags
+  period names or dates that match neither the cited filing nor its text. It abstains when the model
   says the passages don't answer or when nothing survives the checks.
 
 ## MCP tools
