@@ -1,9 +1,10 @@
 import argparse
 import json
+import os
 import sys
 from dataclasses import asdict
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any
 
 from goldirham_filings.companies import BY_TICKER, TRACKED_COMPANIES
@@ -300,6 +301,27 @@ def cmd_fixtures(args: argparse.Namespace, cfg: Settings) -> None:
     print(f"exported {manifest['chunks']} chunks, {len(vectors)} question vectors")
 
 
+def mcp_config(server_command: PurePath) -> dict[str, Any]:
+    """Claude Desktop's mcpServers block for this install's stdio server."""
+    return {"mcpServers": {"goldirham-filings": {"command": str(server_command)}}}
+
+
+def server_command() -> Path:
+    """The console script installed next to this interpreter in the project's venv."""
+    name = "goldirham-filings-mcp.exe" if os.name == "nt" else "goldirham-filings-mcp"
+    return Path(sys.executable).parent / name
+
+
+def cmd_mcp_config(args: argparse.Namespace, cfg: Settings) -> None:
+    command = server_command()
+    if not command.exists():
+        sys.exit(f"{command} not found; run python -m uv sync in {ROOT}")
+    print(json.dumps(mcp_config(command), indent=2))
+    where = (r"%APPDATA%\Claude\claude_desktop_config.json" if os.name == "nt"
+             else "~/Library/Application Support/Claude/claude_desktop_config.json")  # fmt: skip
+    print(f"Merge this into {where}, then restart Claude Desktop.", file=sys.stderr)
+
+
 def cmd_doctor(args: argparse.Namespace, cfg: Settings) -> None:
     from goldirham_filings.doctor import format_report, run_checks
 
@@ -382,6 +404,9 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--model", choices=sorted(EMBEDDING_MODELS))
     p.add_argument("--golden", type=Path, default=GOLDEN_PATH)
     p.set_defaults(func=cmd_fixtures)
+
+    p = commands.add_parser("mcp-config", help="print the Claude Desktop config for this install")
+    p.set_defaults(func=cmd_mcp_config)
 
     p = commands.add_parser("doctor", help="check the database, Ollama, models and settings")
     p.set_defaults(func=cmd_doctor)

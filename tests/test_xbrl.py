@@ -1,5 +1,4 @@
 from datetime import date
-from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -45,23 +44,23 @@ def test_fiscal_year_resolves_through_the_filing_that_covers_it() -> None:
     found = lookup(FACTS, "NVDA", "revenue", fiscal_year=2026, fiscal_period="FY")
     assert found.concept == "Revenues" and found.period_end == date(2026, 1, 25)
     [fact] = found.facts
-    assert (fact.value, fact.accession, fact.duration_days) == (Decimal(215938), K_FY26, 364)
+    assert (fact.value, fact.accession, fact.duration_days) == (215938.0, K_FY26, 364)
     assert fact.source_url == "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/"
 
 
 def test_a_quarter_returns_quarter_and_year_to_date_with_a_note() -> None:
     found = lookup(FACTS, "NVDA", "Revenues", fiscal_year=2027, fiscal_period="Q2")
     assert [(f.value, f.duration_days) for f in found.facts] == [
-        (Decimal(96221), 91), (Decimal(177837), 182)
+        (96221.0, 91), (177837.0, 182)
     ]  # fmt: skip
     assert "duration_days" in found.notes[0]
 
 
 def test_an_instant_comes_from_the_filing_whose_own_period_it_is() -> None:
     found = lookup(FACTS, "NVDA", "cash and cash equivalents", period_end=date(2026, 1, 27))
-    assert [(f.value, f.accession) for f in found.facts] == [(Decimal(10605), K_FY26)]
+    assert [(f.value, f.accession) for f in found.facts] == [(10605.0, K_FY26)]
     latest = lookup(FACTS, "NVDA", "CashAndCashEquivalentsAtCarryingValue")
-    assert latest.period_end == date(2026, 7, 26) and latest.facts[0].value == Decimal(22443)
+    assert latest.period_end == date(2026, 7, 26) and latest.facts[0].value == 22443.0
 
 
 def test_unknown_concepts_and_unreported_periods_say_so() -> None:
@@ -93,4 +92,4 @@ def test_cover_page_dates_and_retired_tags_do_not_mislead() -> None:
     found = lookup(parse_company_facts(2488, data), "AMD", "revenue", 2026, "Q3")
     assert found.concept == "RevenueFromContractWithCustomerExcludingAssessedTax"
     assert found.period_end == date(2026, 9, 26)
-    assert [f.value for f in found.facts] == [Decimal(13377), Decimal(35166)]
+    assert [f.value for f in found.facts] == [13377.0, 35166.0]

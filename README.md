@@ -2,159 +2,225 @@
 
 Ask questions about the SEC 10-K and 10-Q filings of AI-infrastructure companies and get
 answers that cite the exact filing passages, or an explicit "the filings don't answer this".
-It runs as an MCP server, so Claude Desktop or any MCP client can call it. Everything runs
-locally: EDGAR is free, and embeddings and answers come from local models through Ollama.
+It runs as an MCP server, so Claude Desktop or any MCP client can call it. Everything runs on
+your machine: EDGAR is free, and embeddings and answers come from local models through Ollama.
 
 It summarizes what filings say. It is not investment advice.
+
+## Quickstart (Windows)
+
+You need [Python 3.11+](https://www.python.org/downloads/),
+[Docker Desktop](https://www.docker.com/products/docker-desktop/) (running) and
+[Ollama](https://ollama.com/download) (running). The two models, the Postgres image and the
+database take about 7 GB of disk.
+
+```powershell
+git clone https://github.com/ixtaqq/goldirham-filings.git
+cd goldirham-filings
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
+```
+
+`setup.ps1` installs the Python environment, starts Postgres in Docker, creates `.env` (it asks
+for your name and email, which SEC requires in every request), pulls `qwen3:8b` and
+`nomic-embed-text`, indexes 96 filings of 12 companies, loads their XBRL figures and runs
+`filings doctor`. The first run takes about 6 minutes on a machine with a GPU, plus the
+downloads. It is safe to rerun: an existing `.env` is never changed and indexed filings are
+skipped.
+
+### Connect Claude Desktop
+
+1. Print the config for your machine:
+   ```powershell
+   .venv\Scripts\filings mcp-config
+   ```
+2. Open Claude Desktop, then Settings, Developer, Edit Config. That opens
+   `%APPDATA%\Claude\claude_desktop_config.json`. Paste the `goldirham-filings` entry inside
+   `mcpServers` (keep any servers already there) and save.
+3. Quit Claude Desktop fully (also from the tray icon) and start it again.
+4. In a new chat, open the tools menu: `goldirham-filings` should list six tools.
+5. Ask: "Using goldirham-filings, what did NVIDIA report as Data Center revenue in its 10-Q
+   for the quarter ended July 26, 2026?" The answer should cite passages from that 10-Q.
+
+If the server doesn't appear, Settings, Developer shows its log. Docker and Ollama must be
+running whenever Claude Desktop starts the server.
+
+## MCP tools
+
+All tools are read-only. Arguments are JSON, as an MCP client sends them.
+
+| Tool | Returns | Example arguments |
+| --- | --- | --- |
+| `list_coverage` | Indexed companies, filing counts, period ranges, newest filing, when the index was last updated, and what isn't covered | `{}` |
+| `search_filings` | Ranked passages with ticker, form, period, section and offsets | `{"query": "export controls China", "tickers": ["AMAT"], "k": 3}` |
+| `get_passage` | A passage by chunk id, or an exact span by accession, section and offsets, with surrounding text and the EDGAR URL | `{"accession": "0001045810-26-000075", "section": "I-2", "start_char": 17134, "end_char": 17279}` |
+| `answer_question` | A cited answer or an abstention, with the passages used | `{"question": "Does Micron's fiscal 2025 10-K list customer concentration as a risk factor?", "tickers": ["MU"]}` |
+| `compare_filings` | One section of two filings: top passages on a focus topic, or the passages that changed most. Works across a 10-K and a 10-Q | `{"ticker": "MSFT", "section": "1A", "k": 3}` |
+| `get_financial_fact` | An exact reported XBRL value with unit, period, duration and source filing | `{"ticker": "AMD", "concept": "revenue", "fiscal_year": 2026, "fiscal_period": "Q3"}` |
+
+Section ids are 10-K Items (`1A` risk factors, `7` MD&A) and 10-Q Items (`II-1A`, `I-2`).
+`get_financial_fact` accepts XBRL concept names (`NetIncomeLoss`) or plain names such as
+`revenue`, `net income` or `capital expenditures`. A quarter returns every duration that ends
+on its date (quarter and year to date); nothing is computed.
+
+## Everyday commands
+
+| Task | Command |
+| --- | --- |
+| Check every dependency | `.venv\Scripts\filings doctor` |
+| Pick up new filings (then embed and refresh XBRL) | `.venv\Scripts\filings update` |
+| Ask from the terminal | `.venv\Scripts\filings answer "question" --tickers MU` |
+| Search from the terminal | `.venv\Scripts\filings search "question" --tickers MU` |
+| Index other tracked companies | set `INGEST_TICKERS` in `.env`, then `filings ingest`, `filings embed`, `filings facts` |
+
+To keep the index current, schedule `filings update`, for example daily with Windows Task
+Scheduler:
+
+```powershell
+schtasks /Create /TN "Goldirham Filings update" /SC DAILY /ST 06:30 /TR "<path>\.venv\Scripts\filings.exe update"
+```
+
+## Troubleshooting
+
+`filings doctor` names the failing piece; every tool and command prints one of these messages
+instead of a traceback.
+
+| Message | Fix |
+| --- | --- |
+| `The database at 127.0.0.1:5442/filings is not reachable` | Start Docker Desktop, then `docker compose up -d --wait` in the project folder. |
+| `The database ... has no filing tables` | `.venv\Scripts\alembic upgrade head`, then `filings ingest`. |
+| `Ollama is not reachable at http://127.0.0.1:11434` | Install Ollama from ollama.com and start it (it runs in the tray). |
+| `Ollama model qwen3:8b is not pulled` | `ollama pull qwen3:8b` (or the model named). |
+| `Ollama ... did not respond in time` | The model is loading or the machine is busy; try again. `ollama ps` shows what is loaded. |
+| `No chunk has a nomic-embed-text vector` / `... chunks have no ... vector` | `filings embed`. Search works by keyword alone until then. |
+| `SEC refused the request (HTTP 403)` | Set `SEC_USER_AGENT` in `.env` to your real name and email. SEC blocks generic agents. |
+| `No XBRL facts loaded for ...` | `filings facts`. |
+
+## Coverage
+
+12 companies: NVDA, AMD, AVGO, MSFT, AMZN, GOOGL, META, INTC, MU, AMAT, LRCX, KLAC. For each,
+the latest two 10-Ks and six 10-Qs as of the first ingest, plus anything `filings update`
+finds later. Twenty more tracked US companies (QCOM, ORCL, IBM, SMCI, DELL, CSCO, MRVL, ANET,
+DLR, EQIX, CEG, VST, GEV, VRT, ETN, WDC, ON, STX, ANSS, SNPS) can be added through
+`INGEST_TICKERS`; measured cost for all twenty is about 2 minutes of ingest, 5 minutes of
+embedding and 180 MB (`docs/decisions.tsv`, phase 3).
+
+## Limitations
+
+- **TSM, ASML and ARM aren't covered.** They file 20-F and 6-K reports. Support is scoped in
+  `docs/decisions.tsv` but not built.
+- **Some filings have no sections.** Intel's 10-Ks, and IBM, Eaton and Digital Realty filings
+  if you add them, are searched as whole documents because their text has no Item headings.
+  Section filters still include them.
+- **Table columns can be misread.** An answer can quote a figure from the prior-year column
+  of a table; the number check passes because the figure is in the passage.
+- **Comparisons are answered side by side.** Each filing or company is answered on its own,
+  and the answer doesn't compare the parts itself.
+- **The answer model is local and small** (`qwen3:8b`). It declines answerable questions often
+  (see Results), and the judge used in evaluation is the same size.
+- **Golden questions are unchecked.** No question in the evaluation set has been checked by a
+  person yet, so every number below is provisional.
 
 ## How it works
 
 ```
 EDGAR ─► ingest ─► sections (Item 1A, 7, ...) ─► chunks ─► Postgres full-text + pgvector
-MCP client ─► MCP server ─► hybrid search (RRF) ─► cited answer or abstention
+MCP client ─► MCP server ─► scoped hybrid search ─► per-part answers ─► checks ─► cited answer
 golden set ─► eval harness ─► CI retrieval gate + dated reports in benchmarks/
 ```
 
-- **Ingest.** A polite EDGAR client (real contact in `User-Agent`, about 6 requests per
-  second, retries with backoff) fetches each filing once into `data/raw/`. Reruns skip
-  filings already indexed with the current parser version.
-- **Parse.** Inline-XBRL HTML becomes block-aware text with table cells joined by ` | `.
-  Item headings split it into sections. Each item keeps the heading that owns the most text
-  after the body starts, which skips the table of contents. A filing whose required sections
-  (10-K Items 1A and 7, 10-Q Part I Item 2) are missing or stubs falls back to one whole-document
-  section, so no text is lost.
-- **Chunk.** About 500 tokens per chunk, never across a section boundary, with a one-paragraph
-  overlap. Every chunk stores its offsets, and `section.text[start:end] == chunk.text`
-  (Hypothesis property tests).
-- **Scope.** Each company has eight similar filings, and passages repeat from quarter to
-  quarter. Wording like "most recent 10-Q", "fiscal 2025 10-K", "last two 10-Qs" or
-  "quarter ended June 27, 2026" is resolved to the specific filings, using each filing's own
-  fiscal year from its cover page. A question about a period that isn't indexed gets no
-  passages and an abstention, never another quarter's numbers.
-- **Retrieve.** Postgres full-text search (`ts_rank` over the question's words) and cosine
-  vector search, 50 candidates each, merged with reciprocal rank fusion. Filters: ticker,
-  form, period, section, accession.
-- **Balance.** When a question names several filings, each filing is searched separately
-  and the results are interleaved, so one long filing can't crowd out the other.
-- **Prefer recent.** When neither the question nor the caller names a filing or period, the
-  ranking leans mildly toward each company's newer filings.
-- **Answer.** `qwen3:8b` gets numbered passages and must return JSON in which every sentence
-  cites passages. Code then drops citations to passages it never supplied, removes uncited
-  sentences, removes any sentence with a number missing from its cited passages, and flags
-  period names or dates that match neither the cited filing nor its text. It abstains when the model
-  says the passages don't answer or when nothing survives the checks.
-
-## MCP tools
-
-All tools are read-only.
-
-| Tool | Returns |
-| --- | --- |
-| `list_coverage` | Indexed companies, filing counts, period ranges, and what is not covered |
-| `search_filings` | Ranked passages with ticker, form, period, section and offsets |
-| `get_passage` | A passage by chunk id, or an exact span by accession, section and offsets, with surrounding text and EDGAR URL |
-| `answer_question` | A cited answer or an abstention, with the passages used |
-| `compare_filings` | One section of two filings: top passages on a focus topic, or the passages that changed most |
-
-Claude Desktop: copy `docs/claude_desktop_config.example.json` into Claude Desktop's config.
-
-## Coverage
-
-12 companies: NVDA, AMD, AVGO, MSFT, AMZN, GOOGL, META, INTC, MU, AMAT, LRCX, KLAC. For each,
-the latest two 10-Ks and six 10-Qs, 96 filings in all. TSM, ASML and ARM file 20-F reports and
-are not indexed. Intel's filings use a cross-reference index instead of Item headings, so they
-are searchable as whole documents without section labels.
+- **Ingest.** A polite EDGAR client (your contact in `User-Agent`, at most 6 requests a second,
+  retries with backoff) fetches each filing once into `data/raw/`. A filing that fails to
+  download or parse is reported and skipped.
+- **Parse.** HTML becomes text with table cells joined by ` | `. Item headings split it into
+  sections. Filers without Item headings fall back to their own headings (Intel 10-Qs) or to
+  one whole-document section.
+- **Chunk.** About 500 tokens, never across a section, with offsets such that
+  `section.text[start:end] == chunk.text`.
+- **Scope.** Wording such as "fiscal 2025 10-K", "last two 10-Qs" or "quarter ended June 27,
+  2026" picks the filings, using each filing's own fiscal year. A named section ("risk
+  factors", "MD&A") picks the section in both forms. A period that isn't indexed gets an
+  abstention, never another quarter's numbers.
+- **Retrieve.** Postgres full-text and cosine vector search, merged by reciprocal rank fusion,
+  searched per filing when several are named, with a mild preference for newer filings when
+  none is.
+- **Answer.** A question about several filings or companies is answered one part at a time,
+  and each part can decline. `qwen3:8b` returns JSON in which every sentence cites passages.
+  Code drops invalid citations and uncited sentences, removes sentences with numbers not in
+  their cited passages, and flags period names or dates that match neither the cited filing
+  nor its text.
+- **Figures.** XBRL company facts give exact reported values through `get_financial_fact`.
 
 ## Results
 
-The golden set is split into a **dev set** used for tuning and a **held-out test set** used only
-to report results. The split is stratified by question type with a fixed seed
-(`evals/split.json`): 40 original dev questions, 20 test questions, plus 8 dev-only recency
-questions added later. Every number below comes from the named files in `benchmarks/`.
+The golden set (`evals/golden.jsonl`) has a **dev split** for tuning (48 questions, 42
+answerable) and a **test split** (20) for reporting; `evals/split.json` fixes the split.
+Every number comes from the named file in `benchmarks/`. v1.0 numbers will come from a fresh
+held-out set (`evals/heldout.jsonl`, 25 questions) once it has been checked by hand; it has
+never been run.
 
-**Read these numbers with three caveats.**
-- No golden item has been hand-checked yet. Items were drafted from filing text by an agent,
-  and code checks that every gold quote matches the filing exactly.
-- Query scoping and keyword ranking were built before the split, on all 60 questions. Their
-  effect on the test numbers is therefore not a clean held-out measurement.
-- The test set ran four times, all logged in `docs/decisions.tsv`. The third and fourth runs
-  came after looking at one test failure (an unanswerable question that got answered), so
-  the test set is no longer fully unseen for the decision to revert the partial-answer rule.
-  With 20 questions, one item moves a rate by 5 to 33 points.
+**Read these numbers with these caveats.**
+- No golden item has been checked by a person; an agent drafted them from filing text, and
+  code checks that every gold quote matches the filing exactly.
+- The test split is no longer clean: five logged runs, two of them followed by a look at a
+  failing item (`docs/decisions.tsv`). With 17 answerable test questions, one item moves a
+  rate by about 6 points.
+- October and November numbers come from different indexes. The November re-ingest picked up
+  nine newer filings, and ten time-relative questions were reworded to name their period. On
+  the same November index before Phase 2, dev Recall@10 was 0.710
+  (`retrieval-dev-2026-11-06-pinned-periods.json`).
 
-**Baseline vs final.** Baseline is the 2026-10-08 code (`*-2026-10-08-baseline.json`). Final
-is the shipped code (`eval-*-2026-10-09-final2.json`). Dev numbers are on the original 40
-dev questions (`compare-final2-dev40.json`), and test numbers on all 20
-(`compare-final2-test.json`).
+| Metric | Dev Oct | Dev v1 | Test Oct | Test Nov | Target | Met (dev v1) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Recall@10 | 0.730 | 0.742 | 0.784 | 0.873 | ≥ 0.85 | no |
+| MRR | 0.441 | 0.500 | 0.502 | 0.491 | | |
+| Unanswerable declined | 6/6 | 6/6 | 3/3 | 2/3 | ≥ 0.80 | yes |
+| Wrongly declines answerable | 0.286 | 0.238 | 0.176 | 0.235 | ≤ 0.10 | no |
+| Citation precision | 0.678 | 0.662 | 0.774 | 0.741 | ≥ 0.90 | no |
+| Answers with unsupported numbers | 3 | 0 | 1 | 0 | 0 | yes |
+| Judge agreement (local 8B) | 0.595 | 0.643 | 0.588 | 0.471 | indicative | |
 
-| Metric | Dev baseline | Dev final | Test baseline | Test final | Proposed target |
-| --- | --- | --- | --- | --- | --- |
-| Recall@10 | 0.716 | 0.755 | 0.814 | 0.784 | ≥ 0.85 |
-| MRR | 0.468 | 0.485 | 0.498 | 0.502 | |
-| Unanswerable declined | 6/6 | 6/6 | 3/3 | 3/3 | ≥ 0.80 |
-| Wrongly declines answerable | 0.353 | 0.324 | 0.176 | 0.176 | ≤ 0.10 |
-| Citation precision | 0.625 | 0.696 | 0.784 | 0.774 | ≥ 0.90 |
-| Answers with unsupported numbers | 0 | 2 | 1 | 1 | 0 |
-| Judge agreement (local 8B, lenient) | 0.529 | 0.618 | 0.647 | 0.588 | indicative only |
+Files: dev Oct `retrieval-dev-2026-10-09-final.json`, `eval-dev-2026-10-09-final2.json`;
+dev v1 `retrieval-dev-2026-11-06-intel-sections.json`, `eval-dev-2026-11-06-v1-final.json`;
+test Oct `retrieval-test-2026-10-09-final.json`, `eval-test-2026-10-09-final2.json`;
+test Nov `retrieval-test-2026-11-06-phase2.json`, `eval-test-2026-11-06-phase2.json` (run
+before the Intel parser change).
 
-- **Gains on dev don't carry over to test.** Dev improves on recall, MRR, wrong declines,
-  citation precision and the judge.
-- **Test is flat or slightly worse.**
-  - Wrong declines and unanswerable declines are unchanged.
-  - Recall@10 fell because one comparison span dropped out of the top 10.
-  - Recall@5 and MRR rose a little.
-  - Citation precision and the judge fell by one or two items.
-- **What this means.** The gains rest on 40 dev questions, and the test set is too small to
-  confirm or rule them out.
-- **Recency questions.** On the 8 dev-only recency questions, which name no filing, the
-  recency preference raised Recall@10 from 0.50 to 0.625 (`compare-recency-retrieval-dev.json`).
-- **Unsupported numbers.** The flagged numbers are figures the model computed itself (a
-  revenue difference, a sum). The check is designed to catch exactly these.
+- **Targets not met:** Recall@10 on dev, wrong declines (dev 0.238, target 0.10) and
+  citation precision, which slipped from 0.678 to 0.662, partly because per-part answers cite
+  more passages. The metric also holds it down: citing the same fact elsewhere in a filing
+  counts as wrong until an alternate span is checked. Counting the 8 drafted alternates, dev
+  citation precision is 0.799 (`citation_precision_unchecked_alternates` in the dev v1 file).
+- **The test unanswerable miss is a stale question.** `unanswerable-008` asks for AWS operating
+  income for the September 2026 quarter, which wasn't indexed when the question was written
+  and is now. The model also quoted the prior-year column. Until the question is reworded,
+  a correct system can't meet the test floor.
+- **What moved the numbers:** naming a section filters to it (dev Recall@10 0.710 → 0.742),
+  answering per part (dev wrong declines 12/42 → 10/42), and removing sentences with
+  unsupported numbers (3 → 0). Rejected ideas, such as a cross-encoder reranker and
+  change-based ranking for comparisons, are in `docs/decisions.tsv` with their numbers.
 
-**What changed, measured on dev** (decision log: `docs/decisions.tsv`)
+**CI gate.** The fixture corpus is 11 filings (1,584 chunks) and 39 golden questions with
+precomputed vectors. Baseline: Recall@10 0.812, MRR 0.530 (`evals/baseline.json`). With vector
+search dropped the gate fails on both; `tests/test_gate.py` checks that in CI. GitHub Actions
+runs `scripts\check.ps1`'s steps on every pull request and every push to `main`.
 
-| Change | Result | Evidence |
-| --- | --- | --- |
-| Retrieve top passages per filing when a question names several | Kept: Recall@10 0.716 → 0.740, MRR 0.468 → 0.485 | `retrieval-dev-2026-10-08-balance-filings.json` |
-| Prompt: cite only passages that directly state the fact | Kept: citations per answer 2.05 → 1.57, citation precision 0.623 → 0.637 | `compare-cite-rule-dev40.json` |
-| Mild recency preference when no filing or period is named | Kept: recency questions Recall@10 0.50 → 0.625, original dev unchanged or better | `compare-recency-retrieval-dev.json` |
-| Prompt: don't calculate new figures | Kept: answers with unsupported numbers 3 → 1 | `compare-no-arithmetic-dev48.json` |
-| Drop exact repeated sentences from answers | Kept: removes duplicated sentences seen in model output | `tests/test_answer.py` |
-| Cross-encoder reranker (bge-reranker-base, CPU) | Rejected: MRR +0.5 points (bar +3), Recall@10 0.740 → 0.677, 3.5 s per query | `rerank-dev-2026-10-08-bge-reranker-base.json` |
-| "Changed passages" as an extra retrieval channel | Not built: can't compare a 10-K with a 10-Q section | `changed-dev-2026-10-08.json` |
-| Retrieve per company for multi-company questions that name no filing | Reverted: MRR 0.485 → 0.470; only one dev question exercises it | `retrieval-dev-2026-10-08-balance-tickers.json` |
-| Prompt: answer the covered parts of multi-part questions | Reverted: dev wrong declines 0.324 → 0.235, but test unanswerable fell to 2/3, below the floor | `compare-partial-answers-dev40.json`, `compare-final-test.json` |
-| Prompt: "related facts are not an answer" | Reverted: didn't restore test unanswerable (still 2/3) | `compare-decline-rule-test.json` |
+**MCP clients.** `scripts\inspector_check.ps1` calls all six tools through the MCP Inspector
+2.14.0 CLI (`benchmarks/inspector-2026-11-06.json`); `scripts\mcp_smoke.py` checks one result
+per tool through the stdio entry point.
 
-**Where the remaining errors come from.**
-- **Comparisons.** Comparison questions are still the weakest type (dev Recall@10 0.50). The
-  changed sentences often rank low inside each filing (`ranks-dev-2026-10-08-baseline.json`).
-- **Answerable declines.** With the partial-answer rule reverted, the model declines
-  multi-part questions when it can't answer every part. On dev, 6 of the 11 wrong declines
-  had a gold passage among the 8 the model saw (`compare-final2-dev40.json`).
-- **Citation precision.** It is held down partly by the metric itself. Each item lists one
-  gold span, so a citation of the same fact stated elsewhere in the filing counts as wrong.
+## Development
 
-**CI gate.** The fixture corpus is 11 filings (1,584 chunks) and 39 golden questions, with
-precomputed vectors. The baseline is Recall@10 0.769 and MRR 0.473 (`evals/baseline.json`).
-With vector search dropped, the gate measured Recall@10 0.654 and MRR 0.367 and failed.
-`tests/test_gate.py` checks this in CI. GitHub Actions runs on every push to `main`, and
-the gate has passed in CI since the initial push.
+| Task | Command |
+| --- | --- |
+| All checks (what CI runs) | `powershell -File scripts\check.ps1` |
+| Retrieval eval on dev | `.venv\Scripts\filings eval retrieval --split dev` |
+| Full eval (answers, local judge) | `powershell -File scripts\eval.ps1` |
+| MCP smoke test | `.venv\Scripts\python scripts\mcp_smoke.py` |
+| MCP Inspector check | `powershell -File scripts\inspector_check.ps1` |
 
-## Run it
+Design: `docs/design.md`. Decisions and their evidence: `docs/decisions.tsv`. Departures from
+the design: `docs/implementation-notes.md`. Changes: `CHANGELOG.md`.
 
-Prerequisites are Docker, Ollama, and uv.
+## License
 
-```powershell
-python -m uv sync
-docker compose up -d --wait
-.venv\Scripts\alembic upgrade head
-copy .env.example .env               # set SEC_USER_AGENT to your name and email
-ollama pull nomic-embed-text; ollama pull qwen3:8b
-.venv\Scripts\filings ingest         # about 100 filings, several minutes
-.venv\Scripts\filings embed
-.venv\Scripts\filings answer "Does Micron's latest 10-K list customer concentration as a risk factor?" --tickers MU
-```
-
-Checks (the same steps CI runs): `powershell -File scripts\check.ps1`.
-Full evaluation: `powershell -File scripts\eval.ps1`.
+MIT. See `LICENSE`.

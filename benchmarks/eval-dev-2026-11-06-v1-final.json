@@ -1,0 +1,1305 @@
+{
+  "config": {
+    "embedding_model": "nomic-embed-text",
+    "answer_model": "qwen3:8b",
+    "abstain_min_similarity": 0.0,
+    "k": 8,
+    "drop_unsupported_numbers": true
+  },
+  "golden": {
+    "path": "E:\\Workspace\\Projects\\finance\\goldirham-filings\\evals\\golden.jsonl",
+    "split": "dev",
+    "label": "v1-final",
+    "items": 48,
+    "human_checked": 0
+  },
+  "retrieval": {
+    "items": 42,
+    "recall_at_5": 0.6151,
+    "recall_at_8": 0.7302,
+    "recall_at_10": 0.7421,
+    "mrr": 0.4998,
+    "recall_at_10_by_type": {
+      "comparison": 0.4167,
+      "cross-company": 0.6667,
+      "lookup": 0.7727,
+      "risk": 0.9
+    }
+  },
+  "suggested_abstain_threshold": {
+    "threshold": 0.668342987946252,
+    "false_abstention": 0.047619047619047616,
+    "unanswerable_caught": 0.0
+  },
+  "answers": {
+    "items": 48,
+    "declines_by_type": {
+      "comparison": "4/6",
+      "cross-company": "1/4",
+      "lookup": "4/22",
+      "risk": "1/10",
+      "unanswerable": "6/6"
+    },
+    "false_declines_with_gold_in_passages": 5,
+    "citation_precision": 0.6623,
+    "citation_precision_unchecked_alternates": 0.7988,
+    "answers_with_unsupported_numbers": 0,
+    "answers_with_unsupported_periods": 0,
+    "abstention_accuracy": 1,
+    "false_abstention_rate": 0.2381,
+    "judge_correct_rate": 0.6429,
+    "judge_note": "local 8B judge; indicative until compared with a human spot-check"
+  },
+  "retrieval_items": [
+    {
+      "item_id": "lookup-001",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.125,
+      "top_similarity": 0.764359519741508
+    },
+    {
+      "item_id": "lookup-002",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7904115818950248
+    },
+    {
+      "item_id": "lookup-004",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.7463902537358831
+    },
+    {
+      "item_id": "lookup-005",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.16666666666666666,
+      "top_similarity": 0.8308967397953806
+    },
+    {
+      "item_id": "lookup-007",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.7914855231625479
+    },
+    {
+      "item_id": "lookup-008",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7966751916253221
+    },
+    {
+      "item_id": "lookup-009",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.16666666666666666,
+      "top_similarity": 0.7888949354511493
+    },
+    {
+      "item_id": "lookup-010",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7295925167139131
+    },
+    {
+      "item_id": "lookup-012",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.755727081808205
+    },
+    {
+      "item_id": "lookup-013",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.838298359322945
+    },
+    {
+      "item_id": "lookup-015",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.72453375312488
+    },
+    {
+      "item_id": "lookup-017",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7067807670877283
+    },
+    {
+      "item_id": "lookup-018",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7470959705686447
+    },
+    {
+      "item_id": "lookup-021",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.25,
+      "top_similarity": 0.7271027293717598
+    },
+    {
+      "item_id": "risk-002",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.7634761474445877
+    },
+    {
+      "item_id": "risk-003",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.3333333333333333,
+      "top_similarity": 0.679439258909672
+    },
+    {
+      "item_id": "risk-006",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.25,
+      "top_similarity": 0.7365324120681659
+    },
+    {
+      "item_id": "risk-008",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7081320633730863
+    },
+    {
+      "item_id": "risk-009",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7563991351719809
+    },
+    {
+      "item_id": "risk-010",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7315532725124237
+    },
+    {
+      "item_id": "risk-011",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.6273265329210167
+    },
+    {
+      "item_id": "risk-012",
+      "item_type": "risk",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.738391951418509
+    },
+    {
+      "item_id": "risk-013",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.6942597992110541
+    },
+    {
+      "item_id": "risk-015",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7540327154340121
+    },
+    {
+      "item_id": "comparison-001",
+      "item_type": "comparison",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.5,
+      "recall_at_10": 0.5,
+      "reciprocal_rank": 0.16666666666666666,
+      "top_similarity": 0.71162483442576
+    },
+    {
+      "item_id": "comparison-002",
+      "item_type": "comparison",
+      "recall_at_5": 0.5,
+      "recall_at_8": 0.5,
+      "recall_at_10": 0.5,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.7105335169712707
+    },
+    {
+      "item_id": "comparison-003",
+      "item_type": "comparison",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.5,
+      "recall_at_10": 0.5,
+      "reciprocal_rank": 0.16666666666666666,
+      "top_similarity": 0.721384654292712
+    },
+    {
+      "item_id": "comparison-004",
+      "item_type": "comparison",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.7378283866337365
+    },
+    {
+      "item_id": "comparison-005",
+      "item_type": "comparison",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.6481381268419055
+    },
+    {
+      "item_id": "comparison-006",
+      "item_type": "comparison",
+      "recall_at_5": 0.5,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.3333333333333333,
+      "top_similarity": 0.7109398073518174
+    },
+    {
+      "item_id": "cross-company-001",
+      "item_type": "cross-company",
+      "recall_at_5": 0.6666666666666666,
+      "recall_at_8": 0.6666666666666666,
+      "recall_at_10": 0.6666666666666666,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7693525919511309
+    },
+    {
+      "item_id": "cross-company-002",
+      "item_type": "cross-company",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.758467748256623
+    },
+    {
+      "item_id": "cross-company-003",
+      "item_type": "cross-company",
+      "recall_at_5": 0.5,
+      "recall_at_8": 0.5,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7271855853132766
+    },
+    {
+      "item_id": "cross-company-004",
+      "item_type": "cross-company",
+      "recall_at_5": 0.6666666666666666,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.7367828299948079
+    },
+    {
+      "item_id": "lookup-101",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.7344173314125547
+    },
+    {
+      "item_id": "lookup-102",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.6878015417875241
+    },
+    {
+      "item_id": "lookup-103",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.7337676664064424
+    },
+    {
+      "item_id": "lookup-104",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.780153299469574
+    },
+    {
+      "item_id": "lookup-105",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.3333333333333333,
+      "top_similarity": 0.7010374007754218
+    },
+    {
+      "item_id": "lookup-106",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.735645536030424
+    },
+    {
+      "item_id": "lookup-107",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.7657458427861353
+    },
+    {
+      "item_id": "lookup-108",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.2,
+      "top_similarity": 0.7715182159334888
+    }
+  ],
+  "answer_items": [
+    {
+      "item_id": "lookup-001",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "NVIDIA reported Data Center revenue of $89.0 billion in its most recent 10-Q (quarter ended July 26, 2026). Data Center revenue increased by 117% from a year ago and up 18% sequentially.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001045810-26-000075 I-2 15783-17723"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-002",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "NVIDIA's supply and capacity commitments grew from $119 billion to $279 billion during the quarter ended July 26, 2026.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001045810-26-000075 I-2 5750-8341"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-004",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "lookup-005",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Azure and other cloud services revenue grew by 41% in Microsoft's fiscal year 2026.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001193125-26-323660 7 1937-3599"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-007",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "As of June 30, 2026, $40.6 billion remained of this $60.0 billion share repurchase program.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001193125-26-323660 7 35064-37047"
+      ],
+      "notes": [
+        "removed repeated sentence: 'As of June 30, 2026, $40.6 billion remained of this $60.0 billion share repurchase program.'"
+      ]
+    },
+    {
+      "item_id": "lookup-008",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Microsoft 365 Commercial cloud revenue grew 19% in the quarter. The growth was driven by growth in revenue per user driven by Microsoft 365 E5 and Microsoft 365 Copilot.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001193125-26-191507 I-2 17950-19892"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-009",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Micron reported a consolidated gross margin of $35,056 million for the third quarter of fiscal 2026. The consolidated gross margin percentage for the third quarter of fiscal 2026 was 85%.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000723125-26-000015 I-2 7953-9864"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-010",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Micron acquired a wafer fabrication facility in Tongluo, Miaoli County, Taiwan. The acquisition was for a total cash consideration of $1.8 billion.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000723125-26-000015 I-2 27690-30015"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-012",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "no sentence survived the citation check",
+        "numbers not found in cited passages: 12267",
+        "removed sentence with numbers not in its cited passages: \"Micron's total revenue grew by $12,267 million in fiscal 2025.\""
+      ]
+    },
+    {
+      "item_id": "lookup-013",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "AMD's Data Center segment net revenue for the quarter ended June 27, 2026 was $6.7 billion. AMD's Data Center segment net revenue for the quarter ended June 27, 2026 increased by 107% compared to the prior year period.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000123 I-2 11960-14342"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-015",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "AMD recorded approximately $800 million in MI308 inventory and related charges in fiscal 2025. AMD reversed approximately $360 million of the inventory and related charges recorded earlier in the year.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000018 7 7136-8986"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-017",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.5,
+      "citation_precision_unchecked_alternates": 0.5,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Applied Materials expected approximately 4% of its global workforce to be impacted by the Fiscal 2025 Restructuring Plan. The charges recognized for the Fiscal 2025 Restructuring Plan were $181 million, consisting primarily of severance and other employment termination benefits to be paid in cash, and other non-cash related charges.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001628280-25-056742 7 13975-15800",
+        "0001628280-25-056742 16 71952-73885"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-018",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Intel recognized a $12.5 billion loss in Q2 2026 related to its common stock held in escrow for the U.S. government.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000050863-26-000157 I-2 0-1615"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-021",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Alphabet raised $49.6 billion from its June 2026 equity issuances.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001652044-26-000071 I-2 14165-16159"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-002",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "If AI clouds cannot sell committed capacity, NVIDIA has agreed to purchase that capacity. NVIDIA may not have sufficient demand for, or the operational ability to use or resell, all the capacity it is committed to purchase. NVIDIA may earn a share of revenue generated by sales of the supported capacity, but lower-than-expected AI compute demand or pricing may reduce the revenue it receives.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001045810-26-000075 II-1A 1650-3716"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-003",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "NVIDIA's fiscal 2026 10-K does list its Groq license arrangement as a risk factor. The reason is that the license arrangement required significant, nonrefundable payments and the economic outcomes depend on the ability to translate the licensed technology into commercially viable products and services.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001045810-26-000021 1A 5308-7677"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-006",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Micron's fiscal 2025 10-K cites the May 2023 decision by China\u2019s Cyberspace Administration (the \u201cCAC\u201d) as a regulatory action affecting its business. The CAC determined that critical information infrastructure operators in China may not purchase Micron products, impacting our revenue with companies headquartered in mainland China and Hong Kong. Further actions by the Chinese government, through CAC action or other means, could impact revenue inside or outside China, or our operations in China, or our ability to ship products to our customers.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000723125-25-000028 7 1691-3661"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-008",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "AMD's fiscal 2025 10-K identifies that guarantees and commercial commitments supporting customers' infrastructure may increase exposure to counterparty risk, such as their inability to secure the necessary capital or financing, delays in project execution and downturns in their business, including insolvency. If AMD is required to satisfy its financial obligations under these commercial arrangements, its business, operating results, financial and condition may be adversely affected.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000018 1A 110660-111688"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-009",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Approximately 85% of Applied Materials' revenue came from customers outside the United States in the quarter ended July 26, 2026.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001628280-26-058235 II-1A 4558-6590"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-010",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.5,
+      "citation_precision_unchecked_alternates": 0.5,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "partial",
+      "answer": "Applied Materials' customers are geographically concentrated, particularly in China, Taiwan and Korea. In the three-month period ended July 26, 2026, approximately 85% of our revenue was from customers outside the United States.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001628280-26-058235 II-1A 16007-17787",
+        "0001628280-26-058235 II-1A 4558-6590"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-011",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "According to the most recent 10-Q filing, Broadcom's top five end customers accounted for approximately 50% of its net revenue for the three fiscal quarters ended August 2, 2026.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001730168-26-000080 II-1A 17500-20399"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-012",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "risk-013",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "The BIS Affiliates Rule was suspended by the BIS for one year until November 2026. The BIS Affiliates Rule was suspended for one year until November 2026.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000319201-26-000027 1A 14426-17504"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-015",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.5,
+      "citation_precision_unchecked_alternates": 0.5,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Amazon's 10-Q for the quarter ended June 30, 2026 mentions that developments affecting China-based sellers and suppliers are a risk because regulatory and trade restrictions, tariff policy changes and trade disputes, data protection and cybersecurity laws, economic factors, geopolitical events, security issues, or other factors negatively impacting China-based sellers and suppliers could adversely affect its operating results. The PRC and India regulate Amazon\u2019s and its affiliates\u2019 businesses and operations in country through regulations and license requirements that may restrict the sale of media and other products and services.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001018724-26-000026 II-1A 9867-12950",
+        "0001018724-26-000026 II-1A 6754-9866"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "comparison-001",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": true,
+      "cited": [],
+      "notes": [
+        "no part of the question is answered",
+        "Applied Materials Inc.'s 10-K for the period ended October 26, 2025: model reported the passages do not answer it",
+        "Applied Materials Inc.'s 10-Q for the period ended July 26, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "comparison-002",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "partial",
+      "answer": "The filings in the index don't answer this for Advanced Micro Devices's 10-K for the period ended December 27, 2025. In its 10-Q for the period ended June 27, 2026, AMD described its multi-gigawatt GPU deployment agreements as agreements with OpenAI OpCo, LLC (OpenAI) and Meta Platforms, Inc. (Meta), under which each customer intends to deploy up to 6 gigawatts of AMD data center GPUs, with the first gigawatt of each deployment powered by its AMD Instinct MI450 series products. The agreements also included the issuance of warrants to each customer to purchase up to 160 million shares of AMD's common stock at an exercise price of $0.01 per share, with vesting in tranches tied to AMD Instinct GPU purchase milestones and specified AMD stock price and/or performance conditions.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000123 I-2 6523-8594"
+      ],
+      "notes": [
+        "Advanced Micro Devices's 10-K for the period ended December 27, 2025: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "comparison-003",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 0.6666666666666666,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "In March 2025, our Board of Directors approved a common stock repurchase program authorizing $10.0 billion in repurchases, which supplemented the previous $10.0 billion authorization approved in March 2023. At October 26, 2025, approximately $14.0 billion remained available for future stock repurchases under the repurchase program. Stock Repurchase Program As of July 26, 2026, approximately $12.8 billion remained available for future stock repurchases under the repurchase program.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001628280-25-056742 5 1823-3228",
+        "0001628280-25-056742 16 73870-75744",
+        "0001628280-26-058235 II-2 0-1269"
+      ],
+      "notes": [
+        "Applied Materials Inc.'s 10-K for the period ended October 26, 2025: removed repeated sentence: 'In March 2025, our Board of Directors approved a common stock repurchase program authorizing $10.0 billion in repurchases, which supplemented the previous $10.0 billion authorization approved in March 2023. At October 26, 2025, approximately $14.0 billion remained available for future stock repurchases under the repurchase program.'",
+        "Applied Materials Inc.'s 10-Q for the period ended July 26, 2026: removed repeated sentence: 'As of July 26, 2026, approximately $12.8 billion remained available for future stock repurchases under the repurchase program.'"
+      ]
+    },
+    {
+      "item_id": "comparison-004",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "no part of the question is answered",
+        "NVIDIA Corporation's 10-K for the period ended January 25, 2026: model reported the passages do not answer it",
+        "NVIDIA Corporation's 10-Q for the period ended July 26, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "comparison-005",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": true,
+      "cited": [],
+      "notes": [
+        "no part of the question is answered",
+        "Micron Technology Inc.'s 10-K for the period ended August 28, 2025: model reported the passages do not answer it",
+        "Micron Technology Inc.'s 10-Q for the period ended May 28, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "comparison-006",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": true,
+      "cited": [],
+      "notes": [
+        "no part of the question is answered",
+        "Micron Technology Inc.'s 10-Q for the period ended February 26, 2026: model reported the passages do not answer it",
+        "Micron Technology Inc.'s 10-Q for the period ended May 28, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "cross-company-001",
+      "item_type": "cross-company",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.2857142857142857,
+      "citation_precision_unchecked_alternates": 0.2857142857142857,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "partial",
+      "answer": "In October 2025, AMD entered into a product purchase agreement with OpenAI OpCo, LLC (OpenAI) to deploy 6 gigawatts of AMD GPUs, with the deployment of the first gigawatt of capacity powered by our AMD Instinct MI450 series products. This multiyear strategic partnership with OpenAI demonstrates our continued execution of hardware, software and full-stack solutions roadmaps. The filings in the index don't answer this for Advanced Micro Devices's 10-Q for the period ended September 26, 2026. Microsoft describes its commercial relationship with OpenAI as a long-term strategic partnership, which was originally established in 2019 and extended in October 2025 and April 2026. Microsoft is a major investor in OpenAI and will continue to receive revenue-sharing payments. Microsoft holds rights to OpenAI\u2019s intellectual property, including models and infrastructure, for integration into its products. Microsoft recorded revenue from commercial arrangements with OpenAI, inclusive of revenue-sharing payments, of $24.1 billion for fiscal year 2026. Microsoft has made total funding commitments of $13.0 billion related to its investment in OpenAI, of which $11.9 billion has been funded as of June 30, 2026. Microsoft's net income and diluted EPS were positively impacted by net gains from investments in OpenAI, which resulted in an increase in net income and diluted EPS of $5.0 billion and $0.67, respectively. Microsoft has a long-term strategic partnership with OpenAI, which was originally established in 2019. Microsoft is a major investor in OpenAI and will continue to receive revenue-sharing payments. We recorded revenue from commercial arrangements with OpenAI, inclusive of revenue-sharing payments, of $10.0 billion. The filings in the index don't answer this for NVIDIA Corporation's 10-K for the period ended January 25, 2026. The filings in the index don't answer this for NVIDIA Corporation's 10-Q for the period ended July 26, 2026.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000018 7 7136-8986",
+        "0000002488-26-000018 1 8837-10825",
+        "0001193125-26-323660 7 1937-3599",
+        "0001193125-26-323660 7 12408-14384",
+        "0001193125-26-323660 8 26527-28921",
+        "0001193125-26-436133 I-2 3585-5362",
+        "0001193125-26-436133 I-1 12502-14333"
+      ],
+      "notes": [
+        "Advanced Micro Devices's 10-Q for the period ended September 26, 2026: model reported the passages do not answer it",
+        "NVIDIA Corporation's 10-K for the period ended January 25, 2026: model reported the passages do not answer it",
+        "NVIDIA Corporation's 10-Q for the period ended July 26, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "cross-company-002",
+      "item_type": "cross-company",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": true,
+      "cited": [],
+      "notes": [
+        "no part of the question is answered",
+        "Microsoft Corporation's 10-Q for the period ended March 31, 2026: model reported the passages do not answer it",
+        "Micron Technology Inc.'s 10-Q for the period ended May 28, 2026: model reported the passages do not answer it",
+        "NVIDIA Corporation's 10-Q for the period ended July 26, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "cross-company-003",
+      "item_type": "cross-company",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.2,
+      "citation_precision_unchecked_alternates": 0.4,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Micron Technology Inc. states that Singapore's global minimum tax, specifically the 15% minimum tax Pillar Two Model Rules, largely offsets the benefit from their Singapore tax incentive arrangements. The implementation of Pillar Two in Singapore resulted in a net benefit from tax incentive arrangements for Micron Technology Inc.'s tax provision of $2.21 billion (benefiting their diluted earnings per share by $1.93) for 2026. Micron Technology Inc. also mentions that Singapore's implementation of the OECD Pillar Two framework resulted in $9.03 billion of qualified domestic minimum top-up taxes, which largely offset the benefit from their Singapore tax incentive arrangements for 2026. Applied Materials Inc. states that the global minimum tax regime in Singapore is expected to materially increase their foreign taxes beginning in the first quarter of fiscal 2026. Applied Materials Inc. has been granted additional conditional reduced tax rates in Singapore that expire beginning in fiscal 2030.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000723125-26-000023 7 13284-15197",
+        "0000723125-26-000023 8 70937-72878",
+        "0001628280-26-058235 I-2 34510-36428",
+        "0001628280-26-009694 I-2 33244-35162",
+        "0001628280-26-037227 I-2 33140-35226"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "cross-company-004",
+      "item_type": "cross-company",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.375,
+      "citation_precision_unchecked_alternates": 0.375,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Applied Materials Inc. mentions U.S. export controls on China in their latest 10-K risk factors. The U.S. government has announced additional export regulations for U.S. semiconductor technology sold in China, including wafer fabrication equipment and related parts and services. The U.S. Department of Commerce expanded export license requirements for U.S. companies that sell certain products or provide certain services to entities in China whose actions or functions are intended to support military end uses. The U.S. government may also continue to add customers to its \u201cEntity List,\u201d promulgate additional restrictions, or take measures that could disrupt our product shipments or the provision of services to certain customers. The U.S. and other governments may promulgate new or additional export licensing or other requirements that have the effect of further limiting our ability to provide certain products and services to customers outside the U.S., including China. KLA Corporation mentions U.S. export controls on China in their latest 10-K risk factors. Lam Research Corporation mentions U.S. export controls on China in their latest 10-K risk factors. The U.S. government has enacted rules aimed at restricting China\u2019s ability to manufacture advanced semiconductors, which include restrictions on exports, reexports or transfers to, or shipping, transmitting, transferring, or facilitating such movement to, or performing services at, customer facilities in China engaged in certain technology end-uses, without appropriate authorizations obtained from U.S. authorities. The U.S. Department of Commerce has also enacted rules that have expanded export license requirements for U.S. companies to sell certain items to companies and other end-users in China that are designated as military end-users or have operations that could support military end uses. These rules have required and may require us to apply for and obtain additional export licenses to supply certain of our products to customers in China, and there is no assurance that we will be issued licenses that we apply for on a timely basis or at all. Our customers (including, but not limited to, Chinese customers) may require U.S. export licenses for the use of our products in order to manufacture products, including semiconductor wafers and integrated circuits, for those of their customers (i.e. Huawei and its affiliates) that are subject to the expanded foreign direct product rule, which may adversely impact the demand for our products. The U.S. Department of Commerce could in the future add additional Chinese companies to its restricted entity list or unverified list or take other actions that could expand licensing requirements or otherwise impact the market for our products and our revenue. Certain of our international sales depend on our ability to obtain export licenses from the U.S. or foreign governments. Our inability to obtain such licenses, or an expansion of the number or kinds of sales for which export licenses are required, has limited and could in the future further limit the market for our products and has had and could in the future have an adverse impact on our revenues. The U.S. government has in recent years imposed new controls, including expanded export license requirements and restrictions on sales to certain Chinese entities that significantly impact trade with China. The implementation by the U.S. government of broad export controls restricting access to our technology (such as recent controls limiting exports to China) may cause customers with international operations to reconsider their use of and reliance on our products, which could adversely impact our future revenue and profits and strengthen competitors who are not subject to such restrictions.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001628280-25-056742 1A 8212-11057",
+        "0000319201-26-000027 1A 11402-13048",
+        "0000319201-26-000027 1A 13049-14748",
+        "0000319201-26-000027 1A 14426-17504",
+        "0000319201-26-000027 1A 0-1861",
+        "0000319201-26-000027 1A 17505-19566",
+        "0000707549-26-000037 1A 70687-73764",
+        "0000707549-26-000037 1A 42076-45201"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "unanswerable-001",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "unanswerable-002",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "unanswerable-003",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "unanswerable-004",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "unanswerable-005",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "unanswerable-006",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "lookup-101",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 0.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "partial",
+      "answer": "As of December 31, 2025, Alphabet had 190,820 employees.",
+      "gold_in_passages": false,
+      "cited": [
+        "0001652044-26-000018 1 16762-18731"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-102",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "lookup-103",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 0.5,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "As of June 27, 2026, AMD had $13.1 billion in cash, cash equivalents and short-term investments. As of December 27, 2025, AMD had $10.6 billion in cash, cash equivalents and short-term investments. As of June 27, 2026, AMD had $11,426 million in cash equivalents and short-term investments. As of December 27, 2025, AMD had $9,369 million in cash equivalents and short-term investments.",
+      "gold_in_passages": false,
+      "cited": [
+        "0000002488-26-000123 I-2 23543-26206",
+        "0000002488-26-000123 I-1 27467-29433"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-104",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": true,
+      "cited": [],
+      "notes": [
+        "no sentence survived the citation check",
+        "numbers not found in cited passages: 103233",
+        "numbers not found in cited passages: 42783",
+        "removed sentence with numbers not in its cited passages: 'As of July 26, 2026, NVIDIA held $103,233 million in cash, cash equivalents, and marketable debt securities.'",
+        "removed sentence with numbers not in its cited passages: 'As of July 26, 2026, NVIDIA held $42,783 million in marketable equity securities.'"
+      ]
+    },
+    {
+      "item_id": "lookup-105",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.3333333333333333,
+      "citation_precision_unchecked_alternates": 0.3333333333333333,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "As of July 26, 2026, NVIDIA had $33.5 billion aggregate principal amount of senior notes outstanding. In June 2026, NVIDIA issued an aggregate of $25.0 billion of senior unsecured notes across seven tranches for general corporate purposes. Our aggregate debt maturities as of July 26, 2026, by year payable, were as follows: Due in one year $1,000, Due in one to five years $15,000, Due in five to ten years $7,500, Due in greater than ten years $10,000. As of July 26, 2026, the net carrying amount of the long-term portion of the senior notes was $32,366.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001045810-26-000075 I-1 30260-32122",
+        "0001045810-26-000075 II-1A 33026-34645",
+        "0001045810-26-000075 I-2 33266-35247"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-106",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "KLA had approximately 17,000 regular full-time employees as of June 30, 2026.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000319201-26-000027 1 33880-35878"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-107",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.5,
+      "citation_precision_unchecked_alternates": 0.5,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "As of September 27, 2026, Lam Research had approximately 24,300 regular full-time employees. As of August 4, 2026, Lam Research had approximately 23,300 regular full-time employees.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000707549-26-000037 1 41636-43610",
+        "0000707549-26-000054 I-2 5095-6921"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-108",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "As of November 2, 2025, Broadcom had approximately 19,000 U.S. and other patents.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001730168-25-000121 1 33173-34846"
+      ],
+      "notes": []
+    }
+  ]
+}

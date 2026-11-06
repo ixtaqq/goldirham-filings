@@ -46,8 +46,9 @@ Where the first implementation departs from `design.md`, and why. The decision l
 - **Keyword ranking uses `ts_rank` over an OR query.** `websearch_to_tsquery` ANDs every word
   and matches almost nothing for natural-language questions. `ts_rank` beat `ts_rank_cd` on
   the golden set; that comparison was not saved as a file.
-- **Intel filings** use a cross-reference index instead of Item headings. They index as one
-  `unknown` section and are logged as missing their required sections.
+- **Intel filings** use a cross-reference index instead of Item headings. Since parser v4
+  its 10-Qs are split on Intel's own headings (`parse.OWN_HEADINGS`). Its 10-Ks have no
+  risk-factors heading in their text, so they still index as one `unknown` section.
 - **The digest's company list had six wrong CIKs**: TSM, KLAC, DLR, EQIX, GEV and VRT. They are
   corrected here and checked by `scripts/check_companies.py`. `ai-infra-digest` itself is
   unchanged.
@@ -67,12 +68,28 @@ Where the first implementation departs from `design.md`, and why. The decision l
   parts of multi-part questions. It cut dev wrong declines but answered an unanswerable test
   question, breaking the unanswerable floor.
 
+The v1.0 work (`docs/decisions.tsv`, phases tagged `v1-phase0` to `v1-phase4`) added:
+
+- **Questions answered per part.** Several named filings or companies get one search and one
+  model call each; a part may decline on its own. This replaced the reverted prompt rule.
+- **Section intent.** A named section ("risk factors", "MD&A") filters search to it.
+- **Answer checks.** Sentences with numbers not in their cited passages are removed, and
+  period names and dates are checked against the cited filing's fiscal period.
+- **Dependency errors.** Ollama and database failures become one-sentence messages
+  (`errors.py`).
+- **Freshness and figures.** `filings update` with a run log, and XBRL company facts behind
+  `get_financial_fact`, which never computes a value.
+- **Golden-set maintenance.** Ten time-relative questions name their period; alternate spans
+  are supported but credited only once checked.
+
 ## Not done in this pass
 
-- **Human checks.** No golden item is hand-checked yet (`checked_by` is null on all 68, including the 8 dev-only recency questions), and
-  there is no human spot-check of 20 answers. All metrics and the CI baseline are provisional.
-- **MCP clients.** The server was not tried from Claude Desktop or the MCP Inspector. The stdio
-  entry point is exercised by `scripts/mcp_smoke.py`, which checks one result per tool.
+- **Human checks.** No golden item is hand-checked yet (`checked_by` is null on all 68, the 8
+  drafted alternate spans and the 25 held-out questions), and there is no human spot-check of
+  20 answers. All metrics and the CI baseline are provisional.
+- **Claude Desktop.** The server was verified through the MCP Inspector CLI
+  (`benchmarks/inspector-2026-11-06.json`) and `scripts/mcp_smoke.py`, not yet from Claude
+  Desktop itself; the README lists the steps.
 - **Reranker.** Measured and rejected: bge-reranker-base on CPU gained 0.5 MRR points (the bar
   was 3) and cost recall (`benchmarks/rerank-dev-2026-10-08-bge-reranker-base.json`).
 - **bge-m3 on the final chunks.** bge-m3 had the worst hybrid scores on the earlier chunks, so
@@ -80,6 +97,11 @@ Where the first implementation departs from `design.md`, and why. The decision l
 - **Multi-company questions without a filing reference.** Per-company retrieval was tried
   and reverted. Dev has only one such question, so it couldn't be measured.
 - **Within-filing ranking for comparisons.** Comparison questions retrieve both filings but
-  rank the changed sentences low, which drives most false abstentions.
+  rank the older side's gold low. Favoring text that differs from the paired filing was
+  measured and not built: gold is no more different than its rivals
+  (`benchmarks/novelty-dev-2026-11-06.txt`).
+- **20-F filers.** TSM, ASML and ARM support is scoped (about a day and a half) but not built.
+- **Held-out numbers.** `evals/heldout.jsonl` (25 questions) waits for a hand check before its
+  first run.
 - **Demo, CV and portfolio.** The demo recording and the CV and portfolio updates belong to
   the owner.

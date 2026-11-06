@@ -18,7 +18,7 @@ from decimal import Decimal
 from typing import Any, Literal
 
 import psycopg
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from goldirham_filings.edgar import FORMS, EdgarClient
 
@@ -84,7 +84,7 @@ def parse_company_facts(cik: int, data: dict[str, Any]) -> list[Fact]:
 class FactValue(BaseModel):
     concept: str
     label: str
-    value: Decimal
+    value: float = Field(description="As reported; a plain JSON number, exact for these figures")
     unit: str
     period_start: date | None
     period_end: date
@@ -177,7 +177,7 @@ def filing_index_url(cik: int, accession: str) -> str:
 
 def to_value(f: Fact) -> FactValue:
     return FactValue(
-        concept=f.concept, label=f.label, value=f.value, unit=f.unit,
+        concept=f.concept, label=f.label, value=float(f.value), unit=f.unit,
         period_start=f.period_start, period_end=f.period_end,
         duration_days=(f.period_end - f.period_start).days + 1 if f.period_start else None,
         accession=f.accession, form=f.form, filed=f.filed,
