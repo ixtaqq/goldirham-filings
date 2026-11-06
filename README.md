@@ -178,7 +178,8 @@ test Oct `retrieval-test-2026-10-09-final.json`, `eval-test-2026-10-09-final2.js
 Intel parser change).
 
 **Where v1.0 falls short, on the held-out set.**
-- **Unanswerable questions: 2 of 4 declined, target 0.80.**
+- **Unanswerable questions: 2 of 4 declined, target 0.80.** With 4 unanswerable questions the
+  floor requires 4 of 4 (3 of 4 is 0.75). The miss is a real signal, but on a small sample.
   - `heldout-unanswerable-002` asked for Meta's fourth-quarter 2026 Reality Labs loss, which
     no filing reports. The answer gave the third-quarter loss ($4,129 million, from the 10-Q
     table) as the fourth quarter. The period check flagged "fourth quarter of 2026", but a
@@ -186,12 +187,14 @@ Intel parser change).
   - `heldout-unanswerable-003` asked for Lam's headcount at December 31, 2026. The answer
     gave the dated figures the filings do have (September 27, August 4, March 29) and
     didn't claim a December figure, which the item's own review note allows. The metric
-    counts any answer to an unanswerable question as a failure.
+    counts any answer to an unanswerable question as a failure; v1.0 is not re-scored for
+    this.
 - **Recall@10 0.833, target 0.85.** Comparisons are the weak type (Recall@10 0.167 on 3
   questions): the older filing's passage ranks low.
 - **Citation precision 0.614, target 0.90.** Part of the gap is the metric: correct answers
   that cite the same fact stated in another section score 0, as in `heldout-lookup-003` (the
-  notes repeat the MD&A sentence) and `heldout-lookup-004` (Part II Item 2 repeats it).
+  notes repeat the MD&A sentence) and `heldout-lookup-004` (Part II Item 2 repeats it). The
+  restatements aren't checked alternate spans, and v1.0 is not re-scored for them.
 - **A figure can come from the wrong duration.** `heldout-lookup-009` reported Meta's
   nine-month capital expenditures ($85.82 billion) as the quarter's. The figure is in the
   passage and the period matches the filing, so neither check catches it.
@@ -199,7 +202,11 @@ Intel parser change).
   entirely and two decline one side; none compares the two filings.
 
 **Met on the held-out set:** wrong declines 0.095 (target 0.10) and no answers with
-unsupported numbers.
+unsupported numbers. That check covers numbers, not periods or durations: `heldout-lookup-009`
+passed it while reporting a nine-month figure as the quarter's.
+
+The fixes for these gaps are planned and will be measured on dev, with a new held-out set:
+`docs/v1.1-plan.md`.
 
 **Caveats.**
 - Small sets: one item moves a held-out rate by 4 to 25 points (21 answerable, 4

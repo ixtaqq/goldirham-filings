@@ -2,12 +2,21 @@
 
 Every change below is measured or explained in `docs/decisions.tsv`, with its evidence file.
 
-## 1.0.0 (unreleased)
+## 1.0.0 (2026-11-06)
 
-Held-out results (25 owner-checked questions, one run): Recall@10 0.833, unanswerable
-declined 2/4, wrong declines 0.095, citation precision 0.614, unsupported-number answers 0
-(`benchmarks/eval-all-2026-11-06-heldout-v1.json`). The README states which targets are
-not met. Unreleased until the owner approves the tag.
+Released with three of five held-out targets missed. Results on 25 owner-checked held-out
+questions, run once (`benchmarks/eval-all-2026-11-06-heldout-v1.json`,
+`benchmarks/retrieval-all-2026-11-06-heldout-v1.json`):
+
+| Metric | Held-out | Target | Met |
+| --- | --- | --- | --- |
+| Recall@10 | 0.833 | ≥ 0.85 | no |
+| Unanswerable declined | 2/4 | ≥ 0.80 | no |
+| Wrongly declines answerable | 0.095 (2/21) | ≤ 0.10 | yes |
+| Citation precision | 0.614 | ≥ 0.90 | no |
+| Answers with unsupported numbers | 0 | 0 | yes |
+
+The README explains each miss. Plan for the gaps: `docs/v1.1-plan.md`.
 
 ### Added
 - `scripts\setup.ps1`: one command from a fresh clone to a working server. It checks for
