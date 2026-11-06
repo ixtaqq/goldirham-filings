@@ -84,9 +84,9 @@ The v1.0 work (`docs/decisions.tsv`, phases tagged `v1-phase0` to `v1-phase4`) a
 
 ## Not done in this pass
 
-- **Human checks.** No golden item is hand-checked yet (`checked_by` is null on all 68, the 8
-  drafted alternate spans and the 25 held-out questions), and there is no human spot-check of
-  20 answers. All metrics and the CI baseline are provisional.
+- **Human checks.** The 25 held-out questions are checked by the owner. No golden item is
+  (`checked_by` is null on all 68 and the 8 drafted alternate spans), and there is no human
+  spot-check of 20 answers, so dev and test metrics and the CI baseline are provisional.
 - **Claude Desktop.** The server was verified through the MCP Inspector CLI
   (`benchmarks/inspector-2026-11-06.json`) and `scripts/mcp_smoke.py`, not yet from Claude
   Desktop itself; the README lists the steps.
@@ -101,7 +101,9 @@ The v1.0 work (`docs/decisions.tsv`, phases tagged `v1-phase0` to `v1-phase4`) a
   measured and not built: gold is no more different than its rivals
   (`benchmarks/novelty-dev-2026-11-06.txt`).
 - **20-F filers.** TSM, ASML and ARM support is scoped (about a day and a half) but not built.
-- **Held-out numbers.** `evals/heldout.jsonl` (25 questions) waits for a hand check before its
-  first run.
+- **Held-out targets.** The one held-out run (25 owner-checked questions) missed the
+  unanswerable, Recall@10 and citation-precision targets
+  (`benchmarks/eval-all-2026-11-06-heldout-v1.json`). A candidate fix, removing sentences
+  with unsupported periods, is noted in `docs/decisions.tsv` but not measured or applied.
 - **Demo, CV and portfolio.** The demo recording and the CV and portfolio updates belong to
   the owner.

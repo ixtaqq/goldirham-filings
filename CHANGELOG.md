@@ -4,7 +4,10 @@ Every change below is measured or explained in `docs/decisions.tsv`, with its ev
 
 ## 1.0.0 (unreleased)
 
-Waits for an owner-checked held-out set (`evals/heldout.jsonl`) to report v1.0 numbers.
+Held-out results (25 owner-checked questions, one run): Recall@10 0.833, unanswerable
+declined 2/4, wrong declines 0.095, citation precision 0.614, unsupported-number answers 0
+(`benchmarks/eval-all-2026-11-06-heldout-v1.json`). The README states which targets are
+not met. Unreleased until the owner approves the tag.
 
 ### Added
 - `scripts\setup.ps1`: one command from a fresh clone to a working server. It checks for

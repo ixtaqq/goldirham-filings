@@ -111,14 +111,16 @@ embedding and 180 MB (`docs/decisions.tsv`, phase 3).
 - **Some filings have no sections.** Intel's 10-Ks, and IBM, Eaton and Digital Realty filings
   if you add them, are searched as whole documents because their text has no Item headings.
   Section filters still include them.
-- **Table columns can be misread.** An answer can quote a figure from the prior-year column
-  of a table; the number check passes because the figure is in the passage.
 - **Comparisons are answered side by side.** Each filing or company is answered on its own,
   and the answer doesn't compare the parts itself.
-- **The answer model is local and small** (`qwen3:8b`). It declines answerable questions often
-  (see Results), and the judge used in evaluation is the same size.
-- **Golden questions are unchecked.** No question in the evaluation set has been checked by a
-  person yet, so every number below is provisional.
+- **The answer model is local and small** (`qwen3:8b`). It wrongly declined 2 of 21 answerable
+  held-out questions and about 1 in 4 on dev (see Results), and the judge used in evaluation
+  is the same size.
+- **Most evaluation questions are unchecked.** The 25 held-out questions behind the v1.0
+  numbers were checked by hand; the 68 golden dev and test questions were not, so their
+  numbers are provisional.
+- **Figures can come from the wrong column or duration.** An answer can quote a prior-year or
+  nine-month figure as the quarter's; the checks pass because the figure is in the passage.
 
 ## How it works
 
@@ -152,52 +154,70 @@ golden set ─► eval harness ─► CI retrieval gate + dated reports in bench
 
 ## Results
 
-The golden set (`evals/golden.jsonl`) has a **dev split** for tuning (48 questions, 42
-answerable) and a **test split** (20) for reporting; `evals/split.json` fixes the split.
-Every number comes from the named file in `benchmarks/`. v1.0 numbers will come from a fresh
-held-out set (`evals/heldout.jsonl`, 25 questions) once it has been checked by hand; it has
-never been run.
+The v1.0 numbers come from a **held-out set** of 25 questions (`evals/heldout.jsonl`): drafted
+from filings no tuning run had used, checked by hand, and run once. The **golden set**
+(`evals/golden.jsonl`) has a dev split for tuning (48 questions, 42 answerable) and a test
+split (20); `evals/split.json` fixes the split. Every number comes from the named file in
+`benchmarks/`.
 
-**Read these numbers with these caveats.**
-- No golden item has been checked by a person; an agent drafted them from filing text, and
-  code checks that every gold quote matches the filing exactly.
-- The test split is no longer clean: five logged runs, two of them followed by a look at a
-  failing item (`docs/decisions.tsv`). With 17 answerable test questions, one item moves a
-  rate by about 6 points.
-- October and November numbers come from different indexes. The November re-ingest picked up
-  nine newer filings, and ten time-relative questions were reworded to name their period. On
-  the same November index before Phase 2, dev Recall@10 was 0.710
-  (`retrieval-dev-2026-11-06-pinned-periods.json`).
+| Metric | Held-out v1 | Dev Oct | Dev v1 | Test Oct | Test Nov | Target | Met (held-out) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Recall@10 | 0.833 | 0.730 | 0.742 | 0.784 | 0.873 | ≥ 0.85 | no |
+| MRR | 0.525 | 0.441 | 0.500 | 0.502 | 0.491 | | |
+| Unanswerable declined | 2/4 | 6/6 | 6/6 | 3/3 | 2/3 | ≥ 0.80 | no |
+| Wrongly declines answerable | 0.095 (2/21) | 0.286 | 0.238 | 0.176 | 0.235 | ≤ 0.10 | yes |
+| Citation precision | 0.614 | 0.678 | 0.662 | 0.774 | 0.741 | ≥ 0.90 | no |
+| Answers with unsupported numbers | 0 | 3 | 0 | 1 | 0 | 0 | yes |
+| Judge agreement (local 8B) | 0.714 | 0.595 | 0.643 | 0.588 | 0.471 | indicative | |
 
-| Metric | Dev Oct | Dev v1 | Test Oct | Test Nov | Target | Met (dev v1) |
-| --- | --- | --- | --- | --- | --- | --- |
-| Recall@10 | 0.730 | 0.742 | 0.784 | 0.873 | ≥ 0.85 | no |
-| MRR | 0.441 | 0.500 | 0.502 | 0.491 | | |
-| Unanswerable declined | 6/6 | 6/6 | 3/3 | 2/3 | ≥ 0.80 | yes |
-| Wrongly declines answerable | 0.286 | 0.238 | 0.176 | 0.235 | ≤ 0.10 | no |
-| Citation precision | 0.678 | 0.662 | 0.774 | 0.741 | ≥ 0.90 | no |
-| Answers with unsupported numbers | 3 | 0 | 1 | 0 | 0 | yes |
-| Judge agreement (local 8B) | 0.595 | 0.643 | 0.588 | 0.471 | indicative | |
+Files: held-out `retrieval-all-2026-11-06-heldout-v1.json`, `eval-all-2026-11-06-heldout-v1.json`;
+dev Oct `retrieval-dev-2026-10-09-final.json`, `eval-dev-2026-10-09-final2.json`; dev v1
+`retrieval-dev-2026-11-06-v1-final-spans.json`, `eval-dev-2026-11-06-v1-final-spans.json`;
+test Oct `retrieval-test-2026-10-09-final.json`, `eval-test-2026-10-09-final2.json`; test Nov
+`retrieval-test-2026-11-06-phase2.json`, `eval-test-2026-11-06-phase2.json` (run before the
+Intel parser change).
 
-Files: dev Oct `retrieval-dev-2026-10-09-final.json`, `eval-dev-2026-10-09-final2.json`;
-dev v1 `retrieval-dev-2026-11-06-intel-sections.json`, `eval-dev-2026-11-06-v1-final.json`;
-test Oct `retrieval-test-2026-10-09-final.json`, `eval-test-2026-10-09-final2.json`;
-test Nov `retrieval-test-2026-11-06-phase2.json`, `eval-test-2026-11-06-phase2.json` (run
-before the Intel parser change).
+**Where v1.0 falls short, on the held-out set.**
+- **Unanswerable questions: 2 of 4 declined, target 0.80.**
+  - `heldout-unanswerable-002` asked for Meta's fourth-quarter 2026 Reality Labs loss, which
+    no filing reports. The answer gave the third-quarter loss ($4,129 million, from the 10-Q
+    table) as the fourth quarter. The period check flagged "fourth quarter of 2026", but a
+    flag only annotates the answer; it doesn't remove the sentence.
+  - `heldout-unanswerable-003` asked for Lam's headcount at December 31, 2026. The answer
+    gave the dated figures the filings do have (September 27, August 4, March 29) and
+    didn't claim a December figure, which the item's own review note allows. The metric
+    counts any answer to an unanswerable question as a failure.
+- **Recall@10 0.833, target 0.85.** Comparisons are the weak type (Recall@10 0.167 on 3
+  questions): the older filing's passage ranks low.
+- **Citation precision 0.614, target 0.90.** Part of the gap is the metric: correct answers
+  that cite the same fact stated in another section score 0, as in `heldout-lookup-003` (the
+  notes repeat the MD&A sentence) and `heldout-lookup-004` (Part II Item 2 repeats it).
+- **A figure can come from the wrong duration.** `heldout-lookup-009` reported Meta's
+  nine-month capital expenditures ($85.82 billion) as the quarter's. The figure is in the
+  passage and the period matches the filing, so neither check catches it.
+- **Comparisons are answered side by side.** Of three held-out comparisons, one declines
+  entirely and two decline one side; none compares the two filings.
 
-- **Targets not met:** Recall@10 on dev, wrong declines (dev 0.238, target 0.10) and
-  citation precision, which slipped from 0.678 to 0.662, partly because per-part answers cite
-  more passages. The metric also holds it down: citing the same fact elsewhere in a filing
-  counts as wrong until an alternate span is checked. Counting the 8 drafted alternates, dev
-  citation precision is 0.799 (`citation_precision_unchecked_alternates` in the dev v1 file).
-- **The test unanswerable miss is a stale question.** `unanswerable-008` asks for AWS operating
-  income for the September 2026 quarter, which wasn't indexed when the question was written
-  and is now. The model also quoted the prior-year column. Until the question is reworded,
-  a correct system can't meet the test floor.
-- **What moved the numbers:** naming a section filters to it (dev Recall@10 0.710 → 0.742),
-  answering per part (dev wrong declines 12/42 → 10/42), and removing sentences with
-  unsupported numbers (3 → 0). Rejected ideas, such as a cross-encoder reranker and
-  change-based ranking for comparisons, are in `docs/decisions.tsv` with their numbers.
+**Met on the held-out set:** wrong declines 0.095 (target 0.10) and no answers with
+unsupported numbers.
+
+**Caveats.**
+- Small sets: one item moves a held-out rate by 4 to 25 points (21 answerable, 4
+  unanswerable questions).
+- The held-out answers were read after the run to explain these failures. Any change made
+  because of them has to be measured on dev; the held-out set is no longer clean for it.
+- The held-out questions were drafted by the same model family that built the system, then
+  checked by a person. The golden dev and test questions are not checked yet.
+- The test split is no longer clean (five logged runs, two followed by a look at a failing
+  item), and `unanswerable-008` became answerable after the November re-ingest.
+- October and November numbers come from different indexes (nine newer filings, ten
+  questions reworded to name their period). On the same November index before Phase 2, dev
+  Recall@10 was 0.710 (`retrieval-dev-2026-11-06-pinned-periods.json`).
+
+**What moved the numbers (dev):** naming a section filters to it (Recall@10 0.710 → 0.742),
+answering per part (wrong declines 12/42 → 10/42), and removing sentences with unsupported
+numbers (3 → 0). Rejected ideas, such as a cross-encoder reranker and change-based ranking
+for comparisons, are in `docs/decisions.tsv` with their numbers.
 
 **CI gate.** The fixture corpus is 11 filings (1,584 chunks) and 39 golden questions with
 precomputed vectors. Baseline: Recall@10 0.812, MRR 0.530 (`evals/baseline.json`). With vector

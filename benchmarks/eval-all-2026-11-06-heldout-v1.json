@@ -1,0 +1,705 @@
+{
+  "config": {
+    "embedding_model": "nomic-embed-text",
+    "answer_model": "qwen3:8b",
+    "abstain_min_similarity": 0.0,
+    "k": 8,
+    "drop_unsupported_numbers": true
+  },
+  "golden": {
+    "path": "evals\\heldout.jsonl",
+    "split": "all",
+    "label": "heldout-v1",
+    "items": 25,
+    "human_checked": 25
+  },
+  "retrieval": {
+    "items": 21,
+    "recall_at_5": 0.5714,
+    "recall_at_8": 0.7619,
+    "recall_at_10": 0.8333,
+    "mrr": 0.5251,
+    "recall_at_10_by_type": {
+      "comparison": 0.1667,
+      "cross-company": 0.6667,
+      "lookup": 1.0,
+      "risk": 1.0
+    }
+  },
+  "suggested_abstain_threshold": {
+    "threshold": 0.6721887187845577,
+    "false_abstention": 0.047619047619047616,
+    "unanswerable_caught": 0.0
+  },
+  "answers": {
+    "items": 25,
+    "declines_by_type": {
+      "comparison": "1/3",
+      "cross-company": "1/3",
+      "lookup": "0/10",
+      "risk": "0/5",
+      "unanswerable": "2/4"
+    },
+    "false_declines_with_gold_in_passages": 2,
+    "citation_precision": 0.614,
+    "citation_precision_unchecked_alternates": 0.614,
+    "answers_with_unsupported_numbers": 0,
+    "answers_with_unsupported_periods": 2,
+    "abstention_accuracy": 0.5,
+    "false_abstention_rate": 0.0952,
+    "judge_correct_rate": 0.7143,
+    "judge_note": "local 8B judge; indicative until compared with a human spot-check"
+  },
+  "retrieval_items": [
+    {
+      "item_id": "heldout-lookup-001",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.7565578626313039
+    },
+    {
+      "item_id": "heldout-lookup-002",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.7867879613386048
+    },
+    {
+      "item_id": "heldout-lookup-003",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.14285714285714285,
+      "top_similarity": 0.7210509485329083
+    },
+    {
+      "item_id": "heldout-lookup-004",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.125,
+      "top_similarity": 0.7518420819859913
+    },
+    {
+      "item_id": "heldout-lookup-005",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.8555425405503292
+    },
+    {
+      "item_id": "heldout-lookup-006",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.16666666666666666,
+      "top_similarity": 0.7522146329943997
+    },
+    {
+      "item_id": "heldout-lookup-007",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.764796551514543
+    },
+    {
+      "item_id": "heldout-lookup-008",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.125,
+      "top_similarity": 0.7343247132525715
+    },
+    {
+      "item_id": "heldout-lookup-009",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.1,
+      "top_similarity": 0.6721887187845577
+    },
+    {
+      "item_id": "heldout-lookup-010",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.780317701858313
+    },
+    {
+      "item_id": "heldout-risk-001",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.7452026231647587
+    },
+    {
+      "item_id": "heldout-risk-002",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.6709083711018549
+    },
+    {
+      "item_id": "heldout-risk-003",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.6817993304968872
+    },
+    {
+      "item_id": "heldout-risk-004",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.6920657316857762
+    },
+    {
+      "item_id": "heldout-risk-005",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7515296488088913
+    },
+    {
+      "item_id": "heldout-comparison-001",
+      "item_type": "comparison",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.7949425470968756
+    },
+    {
+      "item_id": "heldout-comparison-002",
+      "item_type": "comparison",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.7550108310638369
+    },
+    {
+      "item_id": "heldout-comparison-003",
+      "item_type": "comparison",
+      "recall_at_5": 0.5,
+      "recall_at_8": 0.5,
+      "recall_at_10": 0.5,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.723216695977264
+    },
+    {
+      "item_id": "heldout-cross-company-001",
+      "item_type": "cross-company",
+      "recall_at_5": 0.5,
+      "recall_at_8": 0.5,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.3333333333333333,
+      "top_similarity": 0.6980937786903125
+    },
+    {
+      "item_id": "heldout-cross-company-002",
+      "item_type": "cross-company",
+      "recall_at_5": 0.5,
+      "recall_at_8": 0.5,
+      "recall_at_10": 0.5,
+      "reciprocal_rank": 0.3333333333333333,
+      "top_similarity": 0.7555716011182995
+    },
+    {
+      "item_id": "heldout-cross-company-003",
+      "item_type": "cross-company",
+      "recall_at_5": 0.5,
+      "recall_at_8": 0.5,
+      "recall_at_10": 0.5,
+      "reciprocal_rank": 0.2,
+      "top_similarity": 0.7351285754029501
+    }
+  ],
+  "answer_items": [
+    {
+      "item_id": "heldout-lookup-001",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "AMD's net revenue for the quarter ended September 26, 2026 was $13.4 billion. AMD's net revenue for the quarter ended September 26, 2026 increased by 45% compared to the prior year period.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000191 I-2 4977-6869"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-lookup-002",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 0.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "AMD reported a gross margin of 54% for the quarter ended September 26, 2026. The change in gross margin was driven by a favorable product mix, including higher Data Center segment revenue.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000191 I-2 19867-21616"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-lookup-003",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 0.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "As of September 30, 2026, $27.6 billion remained available for future issuance under the ATM Program.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001652044-26-000084 I-1 100136-101905"
+      ],
+      "notes": [
+        "removed repeated sentence: 'As of September 30, 2026, $27.6 billion remained available for future issuance under the ATM Program.'",
+        "removed repeated sentence: 'As of September 30, 2026, $27.6 billion remained available for future issuance under the ATM Program.'",
+        "removed repeated sentence: 'As of September 30, 2026, $27.6 billion remained available for future issuance under the ATM Program.'"
+      ]
+    },
+    {
+      "item_id": "heldout-lookup-004",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 0.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "According to its 10-Q for the quarter ended September 30, 2026, KLA had $8.81 billion of repurchase authority remaining.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000319201-26-000034 II-2 0-1906"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-lookup-005",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Lam Research's deferred revenue balance at the end of the quarter ended September 27, 2026, was $2.66 billion.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000707549-26-000054 I-2 10563-12531"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-lookup-006",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Meta reported total revenue of $64.60 billion for the third quarter of 2026. The change in total revenue was due to an increase in advertising revenue.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001628280-26-066773 I-2 1820-3902"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-lookup-007",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Microsoft's commercial remaining performance obligation grew to $677 billion.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001193125-26-436133 I-2 1654-3632"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-lookup-008",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 1,
+      "verdict": "correct",
+      "answer": "Micron reported a consolidated gross margin percentage of 81% for fiscal 2026. This consolidated gross margin percentage improved from 40% for fiscal 2025.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000723125-26-000023 7 4096-6144"
+      ],
+      "notes": [
+        "periods not matching the cited filings: fiscal 2025"
+      ]
+    },
+    {
+      "item_id": "heldout-lookup-009",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 0.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "Meta's capital expenditures for the quarter ended September 30, 2026, were $85.82 billion.",
+      "gold_in_passages": false,
+      "cited": [
+        "0001628280-26-066773 I-2 41096-42765"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-lookup-010",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Intel paid $14.2 billion to reacquire Apollo's minority interest in Ireland SCIP.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000050863-26-000191 I-1 17595-19550"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-risk-001",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "According to the risk factors in AMD's 10-Q for the quarter ended September 26, 2026, the U.S. government has expressed an expectation that it will receive 15% of the revenue generated from licensed MI308 sales to China.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000191 II-1A 81450-83448"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-risk-002",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "International sales, as a percent of net revenue, were 57% for the three months ended September 26, 2026.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000191 II-1A 134900-137978"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-risk-003",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "According to the risk factors in its fiscal 2026 10-K, approximately 60% of Micron's total revenue was concentrated in the data center end market.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000723125-26-000023 1A 50552-52545"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-risk-004",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Meta expects its full-year 2026 Reality Labs operating losses to be approximately $18 billion to $19 billion.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001628280-26-066773 II-1A 69987-72775"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-risk-005",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "The IRS is seeking an additional tax payment of $28.9 billion plus penalties and interest from Microsoft in its NOPAs.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001193125-26-436133 II-1A 68647-70409"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-comparison-001",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": true,
+      "cited": [],
+      "notes": [
+        "no part of the question is answered",
+        "Micron Technology Inc.'s 10-Q for the period ended May 28, 2026: no sentence survived the citation check",
+        "Micron Technology Inc.'s 10-Q for the period ended May 28, 2026: numbers not found in cited passages: 7",
+        "Micron Technology Inc.'s 10-Q for the period ended May 28, 2026: numbers not found in cited passages: 7",
+        "Micron Technology Inc.'s 10-Q for the period ended May 28, 2026: removed sentence with numbers not in its cited passages: \"Micron's consolidated gross margin percentage for the third quarter of fiscal 2026 was 85%, according to passage 7.\"",
+        "Micron Technology Inc.'s 10-Q for the period ended May 28, 2026: removed sentence with numbers not in its cited passages: \"The third-quarter figure in Micron's 10-Q for the quarter ended May 28, 2026, was 85% for consolidated gross margin percentage, as stated in passage 7.\"",
+        "Micron Technology Inc.'s 10-K for the period ended September 3, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "heldout-comparison-002",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 0.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "partial",
+      "answer": "The filings in the index don't answer this for KLA Corporation's 10-K for the period ended June 30, 2026. As of September 30, 2026, KLA's remaining share repurchase authority was $8.81 billion. This remaining share repurchase authority reflects an increase in the authorized repurchase amount of $7.00 billion in the third quarter of fiscal 2026.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000319201-26-000034 II-2 0-1906",
+        "0000319201-26-000034 I-2 41668-43519"
+      ],
+      "notes": [
+        "KLA Corporation's 10-K for the period ended June 30, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "heldout-comparison-003",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.3333333333333333,
+      "citation_precision_unchecked_alternates": 0.3333333333333333,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "partial",
+      "answer": "The filings in the index don't answer this for Alphabet Inc.'s 10-Q for the period ended June 30, 2026. As of September 30, 2026, $27.6 billion remained available for future issuance under the ATM Program.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001652044-26-000084 I-2 41563-43391",
+        "0001652044-26-000084 I-1 98475-100447",
+        "0001652044-26-000084 I-2 14231-16189"
+      ],
+      "notes": [
+        "Alphabet Inc.'s 10-Q for the period ended June 30, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "heldout-cross-company-001",
+      "item_type": "cross-company",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": true,
+      "cited": [],
+      "notes": [
+        "no part of the question is answered",
+        "Advanced Micro Devices's 10-Q for the period ended September 26, 2026: model reported the passages do not answer it",
+        "Meta Platforms Inc.'s 10-Q for the period ended September 30, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "heldout-cross-company-002",
+      "item_type": "cross-company",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.3333333333333333,
+      "citation_precision_unchecked_alternates": 0.3333333333333333,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "As of June 30, 2026, $9.74 billion remained available for repurchase under the stock repurchase program. As of September 30, 2026, an aggregate of $8.81 billion of authorization was available for repurchase under the stock repurchase program. As of September 30, 2026, we had $8.81 billion of repurchase authority remaining. As of September 3, 2026, $2.16 billion of the 2018 authorization remained available for the repurchase of our common stock. On October 8, 2026, our Board of Directors authorized an increase in the maximum amount of discretionary repurchases of our outstanding common stock to be made from December 9, 2026 to $35.16 billion. Through September 3, 2026, we had repurchased an aggregate of $7.84 billion under the 2018 authorization.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000319201-26-000027 8 115759-117523",
+        "0000319201-26-000034 II-2 0-1906",
+        "0000319201-26-000034 I-2 14309-16174",
+        "0000723125-26-000023 5 4598-6466",
+        "0000723125-26-000023 7 25170-27400",
+        "0000723125-26-000023 8 48463-51100"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-cross-company-003",
+      "item_type": "cross-company",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 0.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "partial",
+      "answer": "AMD reported a gross margin of 54% for the quarter ended September 26, 2026. The filings in the index don't answer this for Micron Technology Inc.'s 10-K for the period ended September 3, 2026.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000191 I-2 19867-21616"
+      ],
+      "notes": [
+        "Advanced Micro Devices's 10-Q for the period ended September 26, 2026: removed repeated sentence: 'AMD reported a gross margin of 54% for the quarter ended September 26, 2026.'",
+        "Advanced Micro Devices's 10-Q for the period ended September 26, 2026: removed repeated sentence: 'AMD reported a gross margin of 54% for the quarter ended September 26, 2026.'",
+        "Micron Technology Inc.'s 10-K for the period ended September 3, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "heldout-unanswerable-001",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "heldout-unanswerable-002",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": false,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 1,
+      "verdict": "not_applicable",
+      "answer": "Meta's Reality Labs reported an operating loss of $4,129 million for the fourth quarter of 2026.",
+      "gold_in_passages": false,
+      "cited": [
+        "0001628280-26-066773 I-2 3903-5876"
+      ],
+      "notes": [
+        "periods not matching the cited filings: fourth quarter of 2026"
+      ]
+    },
+    {
+      "item_id": "heldout-unanswerable-003",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": false,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "As of September 27, 2026, Lam Research had approximately 24,300 employees. As of March 29, 2026, Lam Research had approximately 20,600 employees. As of August 4, 2026, Lam Research had approximately 23,300 regular full-time employees.",
+      "gold_in_passages": false,
+      "cited": [
+        "0000707549-26-000054 I-2 5095-6921",
+        "0000707549-26-000037 1 41636-43610",
+        "0000707549-26-000022 I-2 11803-13777"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "heldout-unanswerable-004",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    }
+  ]
+}
