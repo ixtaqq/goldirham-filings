@@ -3,7 +3,7 @@
 Written: 2026-10-08
 Status: DRAFT — awaiting owner review
 Owner: Aizat Taqqiyudin
-Location: `E:\Workspace\Project\services\goldirham-filings` (new repository, not yet initialized)
+Location: `E:\Workspace\Projects\finance\goldirham-filings` (new repository, not yet initialized)
 
 ## 1. Summary
 

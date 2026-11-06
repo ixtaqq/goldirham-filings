@@ -246,6 +246,17 @@ def cmd_fixtures(args: argparse.Namespace, cfg: Settings) -> None:
     print(f"exported {manifest['chunks']} chunks, {len(vectors)} question vectors")
 
 
+def cmd_doctor(args: argparse.Namespace, cfg: Settings) -> None:
+    from goldirham_filings.doctor import format_report, run_checks
+
+    checks = run_checks(cfg)
+    print(format_report(checks))
+    failed = sum(not c.ok for c in checks)
+    if failed:
+        sys.exit(f"{failed} of {len(checks)} checks failed")
+    print(f"all {len(checks)} checks passed")
+
+
 def main(argv: list[str] | None = None) -> None:
     from goldirham_filings.fixtures import FIXTURE_DIR
 
@@ -309,6 +320,9 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--model", choices=sorted(EMBEDDING_MODELS))
     p.add_argument("--golden", type=Path, default=GOLDEN_PATH)
     p.set_defaults(func=cmd_fixtures)
+
+    p = commands.add_parser("doctor", help="check the database, Ollama, models and settings")
+    p.set_defaults(func=cmd_doctor)
 
     args = parser.parse_args(argv)
     args.func(args, settings())

@@ -20,6 +20,7 @@ Read `E:\workspace\agent-homebase\PROJECT-WORKFLOW.md` for the shared workflow.
 | database | `docker compose up -d --wait`, then `.venv\Scripts\alembic upgrade head` |
 | ingest | `.venv\Scripts\filings ingest` (EDGAR fetch; needs `SEC_USER_AGENT` in `.env`) |
 | embed | `.venv\Scripts\filings embed [--model M]` |
+| environment check | `.venv\Scripts\filings doctor` (PASS/FAIL per dependency, non-zero exit on failure) |
 | all checks | `powershell -File scripts\check.ps1` (what CI runs) |
 | single test | `.venv\Scripts\python -m pytest tests\test_chunk.py -q` |
 | full eval | `powershell -File scripts\eval.ps1` |

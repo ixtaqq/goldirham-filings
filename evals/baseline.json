@@ -45,13 +45,13 @@
   ],
   "human_checked": 0,
   "items": 39,
-  "recall_at_5": 0.594,
-  "recall_at_8": 0.7308,
-  "recall_at_10": 0.7692,
-  "mrr": 0.4727,
+  "recall_at_5": 0.5855,
+  "recall_at_8": 0.7222,
+  "recall_at_10": 0.7479,
+  "mrr": 0.4642,
   "recall_at_10_by_type": {
-    "comparison": 0.3333,
-    "cross-company": 0.6667,
+    "comparison": 0.25,
+    "cross-company": 0.5556,
     "lookup": 0.9,
     "risk": 0.8
   }
