@@ -1,6 +1,8 @@
 """Read-only MCP server over the filing index (stdio transport)."""
 
-from collections.abc import Callable
+import sys
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import date
 from typing import Annotated, Any
 
@@ -16,6 +18,8 @@ from goldirham_filings.config import settings
 from goldirham_filings.db import connect
 from goldirham_filings.edgar import Form
 from goldirham_filings.embed import Embedder, OllamaEmbedder
+from goldirham_filings.errors import DependencyError, database_errors
+from goldirham_filings.parse import section_for_form
 from goldirham_filings.retrieve import (
     ChangedPassage,
     CoverageRow,
@@ -26,6 +30,8 @@ from goldirham_filings.retrieve import (
     Retriever,
     changed_passages,
     coverage,
+    embedding_coverage,
+    embedding_note,
     get_passage,
     latest_filings,
 )
@@ -47,6 +53,7 @@ PeriodTo = Annotated[date | None, Field(description="Latest fiscal period end, i
 
 class SearchResult(BaseModel):
     passages: list[Passage]
+    notes: list[str] = Field(default_factory=list)
 
 
 class Coverage(BaseModel):
@@ -57,6 +64,8 @@ class Coverage(BaseModel):
 class Comparison(BaseModel):
     ticker: str
     section: str
+    older_section: str = Field(description="The section's id in the older filing's form")
+    newer_section: str = Field(description="The section's id in the newer filing's form")
     older: FilingSummary
     newer: FilingSummary
     focus: str | None
@@ -66,6 +75,16 @@ class Comparison(BaseModel):
         description="Without focus: newer passages least similar to anything in the older "
         "section, each with its closest older passage"
     )
+
+
+@contextmanager
+def clear_errors() -> Iterator[None]:
+    """Database and Ollama failures reach the client as a message saying what to fix."""
+    try:
+        with database_errors(settings().database_url):
+            yield
+    except DependencyError as error:
+        raise ToolError(str(error)) from error
 
 
 def build_server(
@@ -90,8 +109,10 @@ def build_server(
         and character offsets for citation."""
         filters = Filters(tickers=tickers, forms=forms, period_from=period_from,
                           period_to=period_to, sections=sections)  # fmt: skip
-        with open_conn() as conn:
-            return SearchResult(passages=Retriever(conn, embedder).search(query, filters, k))
+        with clear_errors(), open_conn() as conn:
+            passages = Retriever(conn, embedder).search(query, filters, k)
+            note = embedding_note(embedder.model, *embedding_coverage(conn, embedder.model))
+        return SearchResult(passages=passages, notes=[note] if note else [])
 
     @mcp.tool(name="get_passage", annotations=READ_ONLY)
     def get_passage_tool(
@@ -106,7 +127,7 @@ def build_server(
         offsets into that section (as returned by search_filings), with surrounding text and
         the EDGAR URL."""
         try:
-            with open_conn() as conn:
+            with clear_errors(), open_conn() as conn:
                 found = get_passage(conn, chunk_id, accession, section, start_char, end_char,
                                     context_chars)  # fmt: skip
         except ValueError as error:
@@ -127,14 +148,19 @@ def build_server(
         (1-based, into `passages`). Abstains when the filings do not support an answer."""
         filters = Filters(tickers=tickers, forms=forms, period_from=period_from,
                           period_to=period_to)  # fmt: skip
-        with open_conn() as conn:
+        with clear_errors(), open_conn() as conn:
             answerer = Answerer(Retriever(conn, embedder), chat, min_similarity=min_similarity)
-            return answerer.answer(question, filters)
+            result = answerer.answer(question, filters)
+            note = embedding_note(embedder.model, *embedding_coverage(conn, embedder.model))
+        return result.model_copy(update={"notes": [*result.notes, note]}) if note else result
 
     @mcp.tool(annotations=READ_ONLY)
     def compare_filings(
         ticker: str,
-        section: Annotated[str, Field(description="Section id, e.g. '1A' or '7' for 10-K")],
+        section: Annotated[
+            str,
+            Field(description="Section id, e.g. '1A' or '7' for 10-K, 'II-1A' or 'I-2' for 10-Q"),
+        ],
         form: Form = "10-K",
         older_accession: str | None = None,
         newer_accession: str | None = None,
@@ -142,14 +168,20 @@ def build_server(
         k: Annotated[int, Field(ge=1, le=10)] = 4,
     ) -> Comparison:
         """Evidence from one section of two filings (default: the latest two of the form).
-        With focus, the top passages on that topic from each filing. Without focus, the
-        newer filing's passages that changed most, each paired with its closest older one."""
-        with open_conn() as conn:
+        The two accessions may be a 10-K and a 10-Q: the section is matched across forms
+        (10-K 1A with 10-Q II-1A, 7 with I-2). With focus, the top passages on that topic
+        from each filing. Without focus, the newer filing's passages that changed most,
+        each paired with its closest older one."""
+        with clear_errors(), open_conn() as conn:
             if older_accession and newer_accession:
-                pair = {f.accession: f for f in latest_filings(conn, ticker, form, limit=50)}
+                pair = {
+                    f.accession: f
+                    for any_form in ("10-K", "10-Q")
+                    for f in latest_filings(conn, ticker, any_form, limit=50)
+                }
                 missing = [a for a in (older_accession, newer_accession) if a not in pair]
                 if missing:
-                    raise ToolError(f"Not indexed for {ticker} {form}: {', '.join(missing)}")
+                    raise ToolError(f"Not indexed for {ticker}: {', '.join(missing)}")
                 older, newer = sorted(
                     (pair[older_accession], pair[newer_accession]),
                     key=lambda f: (f.period_end or f.filed_at, f.filed_at),
@@ -159,25 +191,34 @@ def build_server(
                 if len(latest) < 2:
                     raise ToolError(f"Fewer than two {form} filings indexed for {ticker}.")
                 newer, older = latest
+            older_section = section_for_form(section, older.form)
+            newer_section = section_for_form(section, newer.form)
+            for filing, matched in ((older, older_section), (newer, newer_section)):
+                if matched is None:
+                    raise ToolError(f"Section {section} has no equivalent in a {filing.form}.")
+            assert older_section is not None and newer_section is not None
             retriever = Retriever(conn, embedder)
             older_passages: list[Passage] = []
             newer_passages: list[Passage] = []
             changed: list[ChangedPassage] = []
             if focus:
-                for filing, out in ((older, older_passages), (newer, newer_passages)):
-                    scoped = Filters(accessions=[filing.accession], sections=[section])
+                for filing, matched, out in ((older, older_section, older_passages),
+                                             (newer, newer_section, newer_passages)):  # fmt: skip
+                    scoped = Filters(accessions=[filing.accession], sections=[matched])
                     out.extend(retriever.search(focus, scoped, k))
             else:
                 changed = changed_passages(conn, embedder.model, older.accession,
-                                           newer.accession, section, k)  # fmt: skip
-        return Comparison(ticker=ticker.upper(), section=section, older=older, newer=newer,
-                          focus=focus, older_passages=older_passages,
-                          newer_passages=newer_passages, changed=changed)  # fmt: skip
+                                           newer.accession, older_section, newer_section,
+                                           k)  # fmt: skip
+        return Comparison(ticker=ticker.upper(), section=section, older_section=older_section,
+                          newer_section=newer_section, older=older, newer=newer, focus=focus,
+                          older_passages=older_passages, newer_passages=newer_passages,
+                          changed=changed)  # fmt: skip
 
     @mcp.tool(annotations=READ_ONLY)
     def list_coverage() -> Coverage:
         """Indexed companies with filing counts and period ranges, and what is not covered."""
-        with open_conn() as conn:
+        with clear_errors(), open_conn() as conn:
             rows = coverage(conn)
         foreign = [c.ticker for c in TRACKED_COMPANIES if c.filer_type == "foreign"]
         return Coverage(
@@ -192,8 +233,22 @@ def build_server(
     return mcp
 
 
+def startup_warnings(
+    open_conn: Callable[[], psycopg.Connection[tuple[Any, ...]]], model: str, database_url: str
+) -> list[str]:
+    """Problems worth seeing in the client's server log before the first tool call."""
+    try:
+        with database_errors(database_url), open_conn() as conn:
+            note = embedding_note(model, *embedding_coverage(conn, model))
+    except DependencyError as error:
+        return [str(error)]
+    return [note] if note else []
+
+
 def main() -> None:
     cfg = settings()
+    for warning in startup_warnings(connect, cfg.embedding_model, cfg.database_url):
+        print(f"goldirham-filings: warning: {warning}", file=sys.stderr)
     server = build_server(
         connect,
         OllamaEmbedder(cfg.embedding_model, cfg.ollama_url),

@@ -28,8 +28,12 @@ Where the first implementation departs from `design.md`, and why. The decision l
   was answered with another quarter's figure.
 - **The number check is not strictly verbatim** (design 6.5). It compares normalized numbers
   ("60.0" equals "60") and ignores form names, Item numbers, product codes such as MI308, and
-  period names such as "fiscal 2026" or "Q2 2026". As a result, a wrong year inside
-  "fiscal 2026" in an answer is not flagged.
+  period names and dates such as "fiscal 2026", "Q2 2026" or "June 30, 2026". Those are
+  checked separately against the cited filing's fiscal year, fiscal period and period end,
+  or a period the passage itself names; a mismatch is flagged in `unsupported_periods`.
+- **Sentences with unsupported numbers are removed**, not just flagged. On dev every such
+  sentence was a computed or invented figure; removing them cost two declines, both on
+  answers that were not correct (`benchmarks/eval-dev-2026-11-06-phase1-drop.json`).
 - **The similarity abstention threshold ships off** (`abstain_min_similarity = 0`). The best cut
   on the golden set caught 2 of 9 unanswerable questions at a 4% false-abstention cost, and the
   model already abstains on 9 of 9.

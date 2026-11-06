@@ -9,7 +9,14 @@ from goldirham_filings.evaluate import (
     similarity_threshold,
     summarize_retrieval,
 )
-from goldirham_filings.golden import GoldItem, GoldSpan, ItemType, make_split, select
+from goldirham_filings.golden import (
+    AlternateSpan,
+    GoldItem,
+    GoldSpan,
+    ItemType,
+    make_split,
+    select,
+)
 from goldirham_filings.retrieve import Passage
 
 
@@ -103,3 +110,20 @@ def test_split_is_stratified_reproducible_and_disjoint() -> None:
         7, 5, 3,
     ]  # fmt: skip
     assert [i.id for i in select(items, split, "test")] == split["test"]
+
+
+def test_alternate_spans_count_only_when_checked_in_the_headline_metric() -> None:
+    restated = AlternateSpan(accession="C", section="1A", quote="q", start=10, end=40, for_span=0)
+    result = AnswerResult(
+        status="answered", question="q",
+        sentences=[CitedSentence(text="s", citations=[1, 2])],
+        passages=[passage("A", "1A", 90, 120), passage("C", "1A", 0, 50)],
+    )  # fmt: skip
+    unchecked = ITEM.model_copy(update={"alternate_spans": [restated]})
+    score = score_answer(unchecked, result, "correct")
+    assert (score.citation_precision, score.citation_precision_unchecked_alternates) == (0.5, 1.0)
+    owner_checked = restated.model_copy(
+        update={"checked_by": "owner", "checked_at": date(2026, 11, 7)}
+    )
+    checked = ITEM.model_copy(update={"alternate_spans": [owner_checked]})
+    assert score_answer(checked, result, "correct").citation_precision == 1.0

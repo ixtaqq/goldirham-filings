@@ -2,14 +2,16 @@
 
 A filing is keyed by accession. Raw HTML is fetched once and kept under data/raw. A filing
 already indexed with the current PARSER_VERSION is skipped; an older version is replaced,
-which cascades to its sections, chunks and embeddings. Each filing commits on its own, so
-a failure partway through a run keeps every filing indexed before it.
+which cascades to its sections, chunks and embeddings. Each filing commits on its own. A
+filing (or a company's filing list) that fails to fetch or parse is recorded and skipped,
+so one bad document does not end the run; losing the database does.
 """
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import httpx
 import psycopg
 
 from goldirham_filings.chunk import chunk_section
@@ -38,6 +40,33 @@ class IndexResult:
     sections: int = 0
     chunks: int = 0
     missing: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class IngestFailure:
+    ticker: str
+    accession: str  # empty when the company's filing list could not be read
+    error: str
+
+
+@dataclass(frozen=True)
+class IngestReport:
+    results: list[IndexResult]
+    failures: list[IngestFailure]
+
+    def summary(self) -> str:
+        statuses = [r.status for r in self.results]
+        counts = ", ".join(f"{statuses.count(s)} {s}" for s in ("indexed", "replaced", "skipped"))
+        missing = sum(bool(r.missing) for r in self.results)
+        return (f"{len(self.results)} filings ({counts}); {missing} with missing required "
+                f"sections; {len(self.failures)} failed")  # fmt: skip
+
+
+def describe_failure(error: Exception) -> str:
+    if isinstance(error, httpx.HTTPStatusError) and error.response.status_code == 403:
+        return ("SEC refused the request (HTTP 403). Check that SEC_USER_AGENT in .env is your "
+                "real name and email, and that requests stay under the rate limit")  # fmt: skip
+    return f"{type(error).__name__}: {error}"
 
 
 def raw_path(data_dir: Path, ref: FilingRef) -> Path:
@@ -133,19 +162,36 @@ def ingest(
     data_dir: Path,
     companies: list[Company],
     limits: dict[Form, int],
-) -> list[IndexResult]:
+) -> IngestReport:
     upsert_companies(conn)
-    results = []
+    results: list[IndexResult] = []
+    failures: list[IngestFailure] = []
     for company in companies:
         if company.filer_type != "domestic":
             continue
-        for ref in client.filings(company.cik_int, limits):
+        try:
+            refs = client.filings(company.cik_int, limits)
+        except Exception as error:
+            failures.append(IngestFailure(company.ticker, "", describe_failure(error)))
+            print(f"FAILED   {company.ticker:5} filing list: {failures[-1].error}")
+            continue
+        for ref in refs:
             path = raw_path(data_dir, ref)
-            result = index_filing(conn, company, ref, fetch_raw(client, ref, path), path)
+            try:
+                result = index_filing(conn, company, ref, fetch_raw(client, ref, path), path)
+            except psycopg.OperationalError:
+                raise
+            except Exception as error:
+                conn.rollback()
+                failures.append(IngestFailure(company.ticker, ref.accession,
+                                              describe_failure(error)))  # fmt: skip
+                print(f"FAILED   {company.ticker:5} {ref.form} {ref.period_end} "
+                      f"{ref.accession}: {failures[-1].error}")  # fmt: skip
+                continue
             results.append(result)
             print(
                 f"{result.status:8} {company.ticker:5} {ref.form} {ref.period_end} "
                 f"{ref.accession} sections={result.sections} chunks={result.chunks}"
                 + (f" MISSING={','.join(result.missing)}" if result.missing else "")
             )
-    return results
+    return IngestReport(results, failures)

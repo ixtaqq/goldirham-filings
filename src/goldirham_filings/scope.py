@@ -17,6 +17,7 @@ from typing import Any
 import psycopg
 
 from goldirham_filings.edgar import FORMS, Form
+from goldirham_filings.parse import UNKNOWN_SECTION
 
 FORM_PATTERN = re.compile(r"\b(10-[KQ])s?\b(?!/A)|\b(annual|quarterly) reports?\b", re.I)
 COUNT_WORDS = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "eight": 8}
@@ -32,6 +33,20 @@ DATE = (
 )
 QUARTER_ENDED = re.compile(r"\b(?:quarter|period|year) ended\s+" + DATE, re.I)
 PERIOD_END_TOLERANCE_DAYS = 7
+# Section names a question can use, and the 10-K and 10-Q items they mean.
+SECTION_INTENTS = (
+    (re.compile(r"\brisk factors?\b", re.I), ("1A", "II-1A")),
+    (re.compile(r"\bMD&A\b|\bmanagement'?s discussion\b", re.I), ("7", "I-2")),
+    (re.compile(r"\blegal proceedings\b", re.I), ("3", "II-1")),
+    (re.compile(r"\bquantitative and qualitative disclosures\b", re.I), ("7A", "I-3")),
+)
+
+
+def section_intent(text: str) -> list[str]:
+    """Sections the question names ('risk factors' is 1A in a 10-K and II-1A in a 10-Q).
+    'unknown' is added so filings without Item headings, such as Intel's, stay searchable."""
+    sections = [s for pattern, ids in SECTION_INTENTS if pattern.search(text) for s in ids]
+    return [*sections, UNKNOWN_SECTION] if sections else []
 
 
 @dataclass(frozen=True)

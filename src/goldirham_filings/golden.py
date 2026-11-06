@@ -3,12 +3,17 @@
 Gold spans are offsets into section text plus the quoted text. Validation re-reads the
 section and checks text[start:end] == quote, so a parser change that shifts offsets fails
 loudly instead of silently breaking the set.
+
+Filings often state the same fact twice (MD&A and the notes, or two filings). An alternate
+span restates the fact of one gold span elsewhere; citing it is as good as citing the gold
+span. Alternates are checked on their own, and the evaluator credits only checked ones in
+its headline metrics.
 """
 
 import random
 from datetime import date
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 import psycopg
 from pydantic import BaseModel
@@ -26,6 +31,17 @@ class GoldSpan(BaseModel):
     end: int | None = None
 
 
+S = TypeVar("S", bound=GoldSpan)
+
+
+class AlternateSpan(GoldSpan):
+    """Another place that states the fact of gold_spans[for_span]."""
+
+    for_span: int = 0
+    checked_by: str | None = None
+    checked_at: date | None = None
+
+
 class GoldItem(BaseModel):
     id: str
     type: ItemType
@@ -33,6 +49,7 @@ class GoldItem(BaseModel):
     filters: Filters = Filters()
     answerable: bool
     gold_spans: list[GoldSpan]
+    alternate_spans: list[AlternateSpan] = []
     gold_answer: str
     notes: str = ""
     checked_by: str | None = None
@@ -46,10 +63,20 @@ def load_golden(path: Path) -> list[GoldItem]:
 
 def save_golden(path: Path, items: list[GoldItem]) -> None:
     path.write_text(
-        "".join(item.model_dump_json(exclude_none=False) + "\n" for item in items),
+        "".join(
+            item.model_dump_json(exclude=None if item.alternate_spans else {"alternate_spans"})
+            + "\n"
+            for item in items
+        ),
         encoding="utf-8",
         newline="\n",
     )
+
+
+def supporting_spans(item: GoldItem, unchecked: bool = False) -> list[GoldSpan]:
+    """Gold spans plus the alternates that restate them: checked ones only, unless asked."""
+    return [*item.gold_spans,
+            *(a for a in item.alternate_spans if unchecked or a.checked_by)]  # fmt: skip
 
 
 def _section_text(
@@ -68,24 +95,29 @@ def resolve_offsets(
     problems: list[str] = []
     resolved = []
     for item in items:
-        spans = []
-        for span in item.gold_spans:
-            text = _section_text(conn, span.accession, span.section)
-            where = f"{item.id} {span.accession} {span.section}"
-            if text is None:
-                problems.append(f"{where}: section not in index")
-                spans.append(span)
-                continue
-            start = text.find(span.quote)
-            if start < 0:
-                problems.append(f"{where}: quote not found: {span.quote[:60]!r}")
-                spans.append(span)
-                continue
-            if text.find(span.quote, start + 1) >= 0:
-                problems.append(f"{where}: quote occurs more than once; using the first")
-            spans.append(span.model_copy(update={"start": start, "end": start + len(span.quote)}))
-        resolved.append(item.model_copy(update={"gold_spans": spans}))
+        resolved.append(item.model_copy(update={
+            "gold_spans": [_resolve(conn, item.id, s, problems) for s in item.gold_spans],
+            "alternate_spans": [_resolve(conn, item.id, s, problems)
+                                for s in item.alternate_spans],
+        }))  # fmt: skip
     return resolved, problems
+
+
+def _resolve(
+    conn: psycopg.Connection[tuple[Any, ...]], item_id: str, span: S, problems: list[str]
+) -> S:
+    text = _section_text(conn, span.accession, span.section)
+    where = f"{item_id} {span.accession} {span.section}"
+    if text is None:
+        problems.append(f"{where}: section not in index")
+        return span
+    start = text.find(span.quote)
+    if start < 0:
+        problems.append(f"{where}: quote not found: {span.quote[:60]!r}")
+        return span
+    if text.find(span.quote, start + 1) >= 0:
+        problems.append(f"{where}: quote occurs more than once; using the first")
+    return span.model_copy(update={"start": start, "end": start + len(span.quote)})
 
 
 def validate(conn: psycopg.Connection[tuple[Any, ...]], items: list[GoldItem]) -> list[str]:
@@ -99,7 +131,10 @@ def validate(conn: psycopg.Connection[tuple[Any, ...]], items: list[GoldItem]) -
             problems.append(f"{item.id}: answerable must be false exactly for type unanswerable")
         if item.answerable and not item.gold_spans:
             problems.append(f"{item.id}: answerable item has no gold spans")
-        for span in item.gold_spans:
+        for alternate in item.alternate_spans:
+            if not 0 <= alternate.for_span < len(item.gold_spans):
+                problems.append(f"{item.id}: alternate for_span {alternate.for_span} out of range")
+        for span in [*item.gold_spans, *item.alternate_spans]:
             text = _section_text(conn, span.accession, span.section)
             where = f"{item.id} {span.accession} {span.section}"
             if text is None:

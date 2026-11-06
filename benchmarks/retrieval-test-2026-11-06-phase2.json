@@ -1,0 +1,184 @@
+{
+  "golden": "E:\\Workspace\\Projects\\finance\\goldirham-filings\\evals\\golden.jsonl",
+  "split": "test",
+  "label": "phase2",
+  "runs": [
+    {
+      "model": "nomic-embed-text",
+      "mode": "hybrid",
+      "summary": {
+        "items": 17,
+        "recall_at_5": 0.7059,
+        "recall_at_8": 0.8137,
+        "recall_at_10": 0.8725,
+        "mrr": 0.4913,
+        "recall_at_10_by_type": {
+          "comparison": 0.5,
+          "cross-company": 0.6667,
+          "lookup": 1.0,
+          "risk": 1.0
+        }
+      },
+      "items": [
+        {
+          "item_id": "lookup-003",
+          "item_type": "lookup",
+          "recall_at_5": 0.0,
+          "recall_at_8": 0.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.1111111111111111,
+          "top_similarity": 0.7296464458770734
+        },
+        {
+          "item_id": "lookup-006",
+          "item_type": "lookup",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.5,
+          "top_similarity": 0.7285853245432775
+        },
+        {
+          "item_id": "lookup-011",
+          "item_type": "lookup",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.5,
+          "top_similarity": 0.7706249400042254
+        },
+        {
+          "item_id": "lookup-014",
+          "item_type": "lookup",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.5,
+          "top_similarity": 0.817077263822654
+        },
+        {
+          "item_id": "lookup-016",
+          "item_type": "lookup",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.5,
+          "top_similarity": 0.6578431113678392
+        },
+        {
+          "item_id": "lookup-019",
+          "item_type": "lookup",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.6819956330053453
+        },
+        {
+          "item_id": "lookup-020",
+          "item_type": "lookup",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.2,
+          "top_similarity": 0.8200552493416235
+        },
+        {
+          "item_id": "risk-001",
+          "item_type": "risk",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.25,
+          "top_similarity": 0.7133401123666951
+        },
+        {
+          "item_id": "risk-004",
+          "item_type": "risk",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.7157531374530929
+        },
+        {
+          "item_id": "risk-005",
+          "item_type": "risk",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.25,
+          "top_similarity": 0.6751168146381442
+        },
+        {
+          "item_id": "risk-007",
+          "item_type": "risk",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.7177778299649574
+        },
+        {
+          "item_id": "risk-014",
+          "item_type": "risk",
+          "recall_at_5": 0.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.16666666666666666,
+          "top_similarity": 0.7024674642242968
+        },
+        {
+          "item_id": "comparison-007",
+          "item_type": "comparison",
+          "recall_at_5": 0.5,
+          "recall_at_8": 0.5,
+          "recall_at_10": 0.5,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.6758139754036134
+        },
+        {
+          "item_id": "comparison-008",
+          "item_type": "comparison",
+          "recall_at_5": 0.0,
+          "recall_at_8": 0.0,
+          "recall_at_10": 0.0,
+          "reciprocal_rank": 0.0,
+          "top_similarity": 0.6646108027597674
+        },
+        {
+          "item_id": "comparison-009",
+          "item_type": "comparison",
+          "recall_at_5": 0.5,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 0.25,
+          "top_similarity": 0.8206093952860669
+        },
+        {
+          "item_id": "cross-company-005",
+          "item_type": "cross-company",
+          "recall_at_5": 0.0,
+          "recall_at_8": 0.3333333333333333,
+          "recall_at_10": 0.3333333333333333,
+          "reciprocal_rank": 0.125,
+          "top_similarity": 0.6834032286992
+        },
+        {
+          "item_id": "cross-company-006",
+          "item_type": "cross-company",
+          "recall_at_5": 1.0,
+          "recall_at_8": 1.0,
+          "recall_at_10": 1.0,
+          "reciprocal_rank": 1.0,
+          "top_similarity": 0.7219105048962916
+        }
+      ],
+      "unanswerable_top_similarity": [
+        0.7403810729186256,
+        0.7696072137824043,
+        0.7248614282242716
+      ]
+    }
+  ]
+}

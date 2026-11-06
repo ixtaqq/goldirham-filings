@@ -45,14 +45,14 @@
   ],
   "human_checked": 0,
   "items": 39,
-  "recall_at_5": 0.594,
-  "recall_at_8": 0.7308,
-  "recall_at_10": 0.7692,
-  "mrr": 0.4727,
+  "recall_at_5": 0.6752,
+  "recall_at_8": 0.7863,
+  "recall_at_10": 0.812,
+  "mrr": 0.5304,
   "recall_at_10_by_type": {
     "comparison": 0.3333,
-    "cross-company": 0.6667,
+    "cross-company": 0.5556,
     "lookup": 0.9,
-    "risk": 0.8
+    "risk": 1.0
   }
 }
