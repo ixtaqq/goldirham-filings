@@ -2,8 +2,8 @@ import json
 from datetime import date
 from typing import Any
 
-from goldirham_filings.answer import NO_ANSWER, RETRY_REMINDER, Answerer
-from goldirham_filings.retrieve import Filters, Passage
+from goldirham_filings.answer import NO_ANSWER, PART_INSTRUCTION, RETRY_REMINDER, Answerer
+from goldirham_filings.retrieve import Filters, Passage, QuestionPart
 
 
 def passage(chunk_id: int, text: str, similarity: float = 0.8) -> Passage:
@@ -23,6 +23,25 @@ class FakeSearcher:
 
     def search(self, query: str, filters: Filters | None = None, k: int = 8) -> list[Passage]:
         return self.passages[:k]
+
+    def parts(self, query: str, filters: Filters | None = None) -> list[QuestionPart]:
+        return []
+
+
+class PartedSearcher(FakeSearcher):
+    """Two filings, each with its own passages."""
+
+    def __init__(self, by_accession: dict[str, list[Passage]]) -> None:
+        super().__init__([])
+        self.by_accession = by_accession
+
+    def parts(self, query: str, filters: Filters | None = None) -> list[QuestionPart]:
+        return [QuestionPart(label=f"filing {a}", filters=Filters(accessions=[a]))
+                for a in self.by_accession]  # fmt: skip
+
+    def search(self, query: str, filters: Filters | None = None, k: int = 8) -> list[Passage]:
+        assert filters is not None and filters.accessions
+        return self.by_accession[filters.accessions[0]][:k]
 
 
 class FakeChat:
@@ -232,3 +251,47 @@ def test_dates_are_checked_as_periods_not_as_numbers() -> None:
     result = Answerer(FakeSearcher(PASSAGES), chat, drop_unsupported_numbers=False).answer("q")
     assert result.sentences[0].unsupported_numbers == []
     assert result.sentences[0].unsupported_periods == ["June 30, 2025"]
+
+
+class PartChat:
+    """Answers the part about filing A, declines the part about filing B."""
+
+    def __init__(self) -> None:
+        self.prompts: list[str] = []
+
+    def complete_json(self, system: str, user: str, schema: dict[str, Any]) -> str:
+        self.prompts.append(user)
+        if "Answer only for filing A" in user:
+            return json.dumps({"answerable": True, "sentences": [
+                {"text": "Gaming revenue was $4,287 million.", "citations": [2]}]})  # fmt: skip
+        return json.dumps({"answerable": False, "sentences": []})
+
+
+def test_parts_are_answered_separately_and_one_may_decline() -> None:
+    searcher = PartedSearcher({"A": PASSAGES, "B": [passage(13, "Unrelated text.")]})
+    chat = PartChat()
+    result = Answerer(searcher, chat).answer("How did Gaming revenue change?")
+    assert result.status == "answered"
+    assert [(s.text, s.citations) for s in result.sentences] == [
+        ("Gaming revenue was $4,287 million.", [2]),
+        ("The filings in the index don't answer this for filing B.", []),
+    ]
+    assert [p.chunk_id for p in result.passages] == [11, 12, 13]
+    assert result.notes == ["filing B: model reported the passages do not answer it"]
+    assert len(chat.prompts) == 2 and chat.prompts[1].endswith(
+        PART_INSTRUCTION.format(part="filing B")
+    )
+
+
+def test_citations_of_later_parts_point_into_the_combined_passages() -> None:
+    searcher = PartedSearcher({"B": [passage(13, "Unrelated text.")], "A": PASSAGES})
+    result = Answerer(searcher, PartChat()).answer("q")
+    cited = [p for s in result.sentences for c in s.citations for p in [result.passages[c - 1]]]
+    assert [p.chunk_id for p in cited] == [12]
+
+
+def test_all_parts_declining_abstains() -> None:
+    searcher = PartedSearcher({"B": [passage(13, "Unrelated text.")], "C": []})
+    result = Answerer(searcher, PartChat()).answer("q")
+    assert result.status == "abstained"
+    assert result.notes[0] == "no part of the question is answered"

@@ -14,7 +14,7 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 from goldirham_filings.answer import Answerer, AnswerResult, Chat
-from goldirham_filings.golden import GoldItem, GoldSpan
+from goldirham_filings.golden import GoldItem, GoldSpan, supporting_spans
 from goldirham_filings.retrieve import Passage, Retriever
 
 GATE_TOLERANCE = 0.02
@@ -147,6 +147,7 @@ class AnswerScore:
     answerable: bool
     abstained: bool
     citation_precision: float | None
+    citation_precision_unchecked_alternates: float | None
     unsupported_numbers: int
     unsupported_periods: int
     verdict: Verdict
@@ -163,16 +164,21 @@ def _where(p: Passage) -> str:
 def score_answer(item: GoldItem, result: AnswerResult, verdict: Verdict) -> AnswerScore:
     abstained = result.status == "abstained"
     cited = sorted({c for s in result.sentences for c in s.citations})
-    precision = None
-    if cited and item.gold_spans:
-        hits = [any(span_hit(result.passages[c - 1], s) for s in item.gold_spans) for c in cited]
-        precision = sum(hits) / len(hits)
+
+    def precision(spans: list[GoldSpan]) -> float | None:
+        """Share of cited passages that state a gold fact."""
+        if not cited or not spans:
+            return None
+        hits = [any(span_hit(result.passages[c - 1], s) for s in spans) for c in cited]
+        return sum(hits) / len(hits)
+
     return AnswerScore(
         item_id=item.id,
         item_type=item.type,
         answerable=item.answerable,
         abstained=abstained,
-        citation_precision=precision,
+        citation_precision=precision(supporting_spans(item)),
+        citation_precision_unchecked_alternates=precision(supporting_spans(item, unchecked=True)),
         unsupported_numbers=sum(len(s.unsupported_numbers) for s in result.sentences),
         unsupported_periods=sum(len(s.unsupported_periods) for s in result.sentences),
         verdict=verdict,
@@ -187,6 +193,11 @@ def summarize_answers(scores: Sequence[AnswerScore]) -> dict[str, Any]:
     answerable = [s for s in scores if s.answerable]
     unanswerable = [s for s in scores if not s.answerable]
     precisions = [s.citation_precision for s in answerable if s.citation_precision is not None]
+    provisional = [
+        s.citation_precision_unchecked_alternates
+        for s in answerable
+        if s.citation_precision_unchecked_alternates is not None
+    ]
     judged = [s for s in answerable if s.verdict != "not_applicable"]
     declined = [s for s in answerable if s.abstained]
     return {
@@ -198,6 +209,9 @@ def summarize_answers(scores: Sequence[AnswerScore]) -> dict[str, Any]:
         },
         "false_declines_with_gold_in_passages": sum(s.gold_in_passages for s in declined),
         "citation_precision": round(mean(precisions), 4) if precisions else None,
+        "citation_precision_unchecked_alternates": (
+            round(mean(provisional), 4) if provisional else None
+        ),
         "answers_with_unsupported_numbers": sum(s.unsupported_numbers > 0 for s in scores),
         "answers_with_unsupported_periods": sum(s.unsupported_periods > 0 for s in scores),
         "abstention_accuracy": (

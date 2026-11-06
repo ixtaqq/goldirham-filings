@@ -1,0 +1,576 @@
+{
+  "config": {
+    "embedding_model": "nomic-embed-text",
+    "answer_model": "qwen3:8b",
+    "abstain_min_similarity": 0.0,
+    "k": 8,
+    "drop_unsupported_numbers": true
+  },
+  "golden": {
+    "path": "E:\\Workspace\\Projects\\finance\\goldirham-filings\\evals\\golden.jsonl",
+    "split": "test",
+    "label": "phase2",
+    "items": 20,
+    "human_checked": 0
+  },
+  "retrieval": {
+    "items": 17,
+    "recall_at_5": 0.7059,
+    "recall_at_8": 0.8137,
+    "recall_at_10": 0.8725,
+    "mrr": 0.4913,
+    "recall_at_10_by_type": {
+      "comparison": 0.5,
+      "cross-company": 0.6667,
+      "lookup": 1.0,
+      "risk": 1.0
+    }
+  },
+  "suggested_abstain_threshold": {
+    "threshold": 0.6578431113678392,
+    "false_abstention": 0.0,
+    "unanswerable_caught": 0.0
+  },
+  "answers": {
+    "items": 20,
+    "declines_by_type": {
+      "comparison": "2/3",
+      "cross-company": "0/2",
+      "lookup": "1/7",
+      "risk": "1/5",
+      "unanswerable": "2/3"
+    },
+    "false_declines_with_gold_in_passages": 2,
+    "citation_precision": 0.741,
+    "citation_precision_unchecked_alternates": 0.741,
+    "answers_with_unsupported_numbers": 0,
+    "answers_with_unsupported_periods": 0,
+    "abstention_accuracy": 0.6667,
+    "false_abstention_rate": 0.2353,
+    "judge_correct_rate": 0.4706,
+    "judge_note": "local 8B judge; indicative until compared with a human spot-check"
+  },
+  "retrieval_items": [
+    {
+      "item_id": "lookup-003",
+      "item_type": "lookup",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.1111111111111111,
+      "top_similarity": 0.7296464458770734
+    },
+    {
+      "item_id": "lookup-006",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.7285853245432775
+    },
+    {
+      "item_id": "lookup-011",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.7706249400042254
+    },
+    {
+      "item_id": "lookup-014",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.817077263822654
+    },
+    {
+      "item_id": "lookup-016",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.5,
+      "top_similarity": 0.6578431113678392
+    },
+    {
+      "item_id": "lookup-019",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.6819956330053453
+    },
+    {
+      "item_id": "lookup-020",
+      "item_type": "lookup",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.2,
+      "top_similarity": 0.8200552493416235
+    },
+    {
+      "item_id": "risk-001",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.25,
+      "top_similarity": 0.7133401123666951
+    },
+    {
+      "item_id": "risk-004",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7157531374530929
+    },
+    {
+      "item_id": "risk-005",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.25,
+      "top_similarity": 0.6751168146381442
+    },
+    {
+      "item_id": "risk-007",
+      "item_type": "risk",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7177778299649574
+    },
+    {
+      "item_id": "risk-014",
+      "item_type": "risk",
+      "recall_at_5": 0.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.16666666666666666,
+      "top_similarity": 0.7024674642242968
+    },
+    {
+      "item_id": "comparison-007",
+      "item_type": "comparison",
+      "recall_at_5": 0.5,
+      "recall_at_8": 0.5,
+      "recall_at_10": 0.5,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.6758139754036134
+    },
+    {
+      "item_id": "comparison-008",
+      "item_type": "comparison",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": 0.6646108027597674
+    },
+    {
+      "item_id": "comparison-009",
+      "item_type": "comparison",
+      "recall_at_5": 0.5,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 0.25,
+      "top_similarity": 0.8206093952860669
+    },
+    {
+      "item_id": "cross-company-005",
+      "item_type": "cross-company",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.3333333333333333,
+      "recall_at_10": 0.3333333333333333,
+      "reciprocal_rank": 0.125,
+      "top_similarity": 0.6834032286992
+    },
+    {
+      "item_id": "cross-company-006",
+      "item_type": "cross-company",
+      "recall_at_5": 1.0,
+      "recall_at_8": 1.0,
+      "recall_at_10": 1.0,
+      "reciprocal_rank": 1.0,
+      "top_similarity": 0.7219105048962916
+    }
+  ],
+  "answer_items": [
+    {
+      "item_id": "lookup-003",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "lookup-006",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.0,
+      "citation_precision_unchecked_alternates": 0.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "The IRS is seeking an additional tax payment of $28.9 billion from Microsoft in its Notices of Proposed Adjustment.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001193125-26-323660 8 65759-67840"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-011",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Micron expects to receive cash deposits and related financial commitments of $22 billion for agreements concluded to date. Approximately $18 billion of these commitments will be in the form of cash deposits.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000723125-26-000015 I-2 20470-22081"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-014",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.5,
+      "citation_precision_unchecked_alternates": 0.5,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "AMD paid $4.4 billion for ZT Systems. AMD received $2.4 billion in cash and 1.2 million shares of Sanmina common stock for selling ZT's manufacturing business.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000018 8 40566-42200",
+        "0000002488-26-000018 7 4534-7135"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-016",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Applied Materials' days sales outstanding at July 26, 2026 were 77 days.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001628280-26-058235 I-2 25993-27675"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-019",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Broadcom's AI XPV platform initial tranche is $35 billion.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001730168-26-000080 I-2 6393-8043"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "lookup-020",
+      "item_type": "lookup",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "AWS sales increased 37% in Q2 2026, and 33% for the six months ended June 30, 2026 compared to the comparable prior year periods.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001018724-26-000026 I-2 20548-22354"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-001",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "NVIDIA's most recent 10-Q describes the risk that SB Energy may not complete or deliver the infrastructure as expected or on schedule, which may delay or reduce anticipated benefits. If OpenAI does not perform its obligations or becomes subject to an insolvency event, and a guarantee is triggered, NVIDIA may assume the applicable lease, require the landlord to seek a replacement tenant, initiate a sale process or choose to pursue other remedies. A replacement tenant or buyer may not be found on acceptable terms or timing, any replacement lease or sale may generate less value than anticipated, and NVIDIA's obligations may continue longer than expected. NVIDIA may assume long-term lease obligations, incur ongoing lease-related costs or make substantial payments. Although OpenAI has agreed to reimburse and indemnify NVIDIA for certain losses, NVIDIA may not recover amounts promptly or in full.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001045810-26-000075 II-1A 3242-4852"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-004",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Microsoft's fiscal 2026 10-K states that the availability, reliability, and cost of electrical power are critical to the operation and expansion of its datacenters. The 10-K mentions that limitations in power availability, delays in obtaining power connections, outages, shortages, increased energy costs, or requirements imposed by utilities, regulators, or other market participants could restrict Microsoft's ability to develop or expand datacenter capacity. The filing also notes that alternative energy sources and other emerging solutions may not be available in sufficient quantities, may not timely scale to meet Microsoft's requirements, or may be available only at higher costs. If Microsoft is unable to secure adequate power resources on commercially reasonable terms, its ability to support customer demand and execute its growth strategy could be adversely affected.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001193125-26-323660 1A 42977-45456"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-005",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "Micron's fiscal 2025 10-K lists customer concentration as a risk factor.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000723125-25-000028 1A 46493-48189"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-007",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 1.0,
+      "citation_precision_unchecked_alternates": 1.0,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "partial",
+      "answer": "AMD relies on Taiwan Semiconductor Manufacturing Company Limited (TSMC) for the production of all wafers for microprocessor and GPU products at 7 nanometer (nm) or smaller nodes. AMD relies primarily on GLOBALFOUNDRIES Inc. (GF) for wafers for microprocessor and GPU products manufactured at process nodes larger than 7 nm. AMD also utilizes TSMC, United Microelectronics Corporation (UMC) and Samsung Electronics Co., Ltd. for its integrated circuits (IC) in the form of programmable logic devices.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000002488-26-000018 1A 28340-30484"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "risk-014",
+      "item_type": "risk",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": true,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "comparison-007",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": true,
+      "cited": [],
+      "notes": [
+        "no part of the question is answered",
+        "Microsoft Corporation's 10-K for the period ended June 30, 2025: model reported the passages do not answer it",
+        "Microsoft Corporation's 10-K for the period ended June 30, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "comparison-008",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "no part of the question is answered",
+        "Meta Platforms Inc.'s 10-K for the period ended December 31, 2025: model reported the passages do not answer it",
+        "Meta Platforms Inc.'s 10-Q for the period ended June 30, 2026: model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "comparison-009",
+      "item_type": "comparison",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.5,
+      "citation_precision_unchecked_alternates": 0.5,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "incorrect",
+      "answer": "Intel Foundry revenue in Q1 2026 was $5,421 million, compared to $4,667 million in Q1 2025. Intel Foundry revenue in Q2 2026 was $5,765 million, compared to $4,417 million in Q2 2025.",
+      "gold_in_passages": true,
+      "cited": [
+        "0000050863-26-000079 unknown 109969-111840",
+        "0000050863-26-000157 unknown 118365-120586"
+      ],
+      "notes": [
+        "Intel Corporation's 10-Q for the period ended June 27, 2026: numbers not found in cited passages: 1348",
+        "Intel Corporation's 10-Q for the period ended June 27, 2026: removed sentence with numbers not in its cited passages: 'Intel Foundry revenue in Q2 2026 increased by $1,348 million from Q2 2025.'"
+      ]
+    },
+    {
+      "item_id": "cross-company-005",
+      "item_type": "cross-company",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.13333333333333333,
+      "citation_precision_unchecked_alternates": 0.13333333333333333,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "correct",
+      "answer": "NVIDIA discloses financial guarantees or backstops supporting third-party AI infrastructure build-outs through commitments to secure land, power, and shell for data centers, as well as providing guarantees of land, power, shell, and capacity of select data center infrastructure that customers require to deploy their products. NVIDIA also discloses entering into memorandums of understanding with several large capital providers to establish independent financing platforms designed to mobilize more than $500 billion of third-party capital over time to support the deployment of AI infrastructure. NVIDIA discloses providing limited residual-value support for a portion of specific projects, subject to disciplined risk management and project-by-project evaluation. NVIDIA discloses providing $3.5 billion in land, power, and shell guarantees to early-stage companies, generally over multi-year periods. Broadcom Inc. has entered into a backstop agreement with a financial partner to support the customer\u2019s lease obligations over the 5-year lease terms. The backstop agreement may result in a maximum potential liability upon the deployment of all AI racks, on an undiscounted basis, of approximately $29 billion. Broadcom Inc. may provide residual value guarantees, which are contingent liabilities they believe would have a low probability of occurring. Alphabet Inc. discloses financial guarantees and backstops supporting third-party AI infrastructure build-outs.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001045810-26-000075 I-2 9773-11587",
+        "0001045810-26-000075 I-1 33744-35654",
+        "0001045810-26-000075 I-2 5750-8341",
+        "0001045810-26-000075 I-1 32051-33922",
+        "0001045810-26-000075 I-2 11588-14010",
+        "0001045810-26-000075 I-1 21093-23007",
+        "0001045810-26-000021 7 5087-7082",
+        "0001730168-26-000080 I-2 4384-6392",
+        "0001730168-26-000080 I-2 6393-8043",
+        "0001652044-26-000084 II-1A 4600-6518",
+        "0001652044-26-000084 I-2 47032-48923",
+        "0001652044-26-000071 II-1A 4591-6354",
+        "0001652044-26-000071 I-2 44278-46111",
+        "0001652044-26-000048 II-1A 4591-6159",
+        "0001652044-26-000048 I-2 39703-41456"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "cross-company-006",
+      "item_type": "cross-company",
+      "answerable": true,
+      "abstained": false,
+      "citation_precision": 0.5,
+      "citation_precision_unchecked_alternates": 0.5,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "partial",
+      "answer": "Alphabet reported capital expenditures of $44.9 billion for the three months ended June 30, 2026. Meta Platforms Inc. reported capital expenditures, including principal payments on finance leases, of $31.08 billion for the three months ended June 30, 2026. Cash used in investing activities during the six months ended June 30, 2026 mostly consisted of $49.11 billion of purchases of property and equipment. We anticipate making capital expenditures of approximately $130 billion to $145 billion in 2026 to support our AI efforts and core business.",
+      "gold_in_passages": true,
+      "cited": [
+        "0001652044-26-000071 I-2 16017-17988",
+        "0001628280-26-050705 I-2 3484-5470",
+        "0001628280-26-050705 I-2 41618-43798",
+        "0001628280-26-050705 I-2 43799-45402"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "unanswerable-007",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    },
+    {
+      "item_id": "unanswerable-008",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": false,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The AWS segment operating income for the quarter ended September 30, 2026, was $11,434 million.",
+      "gold_in_passages": false,
+      "cited": [
+        "0001018724-26-000040 I-2 31033-32691"
+      ],
+      "notes": []
+    },
+    {
+      "item_id": "unanswerable-009",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ]
+    }
+  ]
+}

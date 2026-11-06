@@ -4,7 +4,12 @@ from typing import Any
 import psycopg
 import pytest
 
-from goldirham_filings.scope import FilingReference, parse_references, resolve_accessions
+from goldirham_filings.scope import (
+    FilingReference,
+    parse_references,
+    resolve_accessions,
+    section_intent,
+)
 
 
 def test_most_recent_form() -> None:
@@ -124,3 +129,11 @@ def test_resolve_respects_the_callers_period_filter(
     assert resolve_accessions(fixture_conn, refs, ["MSFT"], period_to=date(2025, 12, 31)) == [
         MSFT_FY2025_10K
     ]
+
+
+def test_named_sections_cover_both_forms_and_unsectioned_filings() -> None:
+    assert section_intent("Does Micron list customer concentration as a risk factor?") == [
+        "1A", "II-1A", "unknown"
+    ]  # fmt: skip
+    assert section_intent("What does AMD's MD&A say about supply?") == ["7", "I-2", "unknown"]
+    assert section_intent("What risks does AMD face from export controls?") == []

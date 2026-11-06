@@ -6,6 +6,7 @@ from goldirham_filings.parse import (
     decode_html,
     html_to_text,
     missing_required,
+    section_for_form,
     split_sections,
 )
 
@@ -128,3 +129,13 @@ def test_sections_are_contiguous_slices_of_the_text(lines: list[str]) -> None:
     assert sections and text.endswith(joined)
     assert {"1A", "7"} <= {s.item for s in sections}
     assert all(s.text.startswith("Item ") for s in sections)
+
+
+def test_sections_map_across_forms() -> None:
+    assert section_for_form("1A", "10-Q") == "II-1A"
+    assert section_for_form("ii-1a", "10-K") == "1A"
+    assert section_for_form("7", "10-Q") == "I-2"
+    assert section_for_form("I-2", "10-K") == "7"
+    assert section_for_form("7", "10-K") == "7"
+    assert section_for_form("1C", "10-Q") is None
+    assert section_for_form("II-6", "10-K") is None

@@ -19,6 +19,7 @@ from goldirham_filings.db import connect
 from goldirham_filings.edgar import Form
 from goldirham_filings.embed import Embedder, OllamaEmbedder
 from goldirham_filings.errors import DependencyError, database_errors
+from goldirham_filings.parse import section_for_form
 from goldirham_filings.retrieve import (
     ChangedPassage,
     CoverageRow,
@@ -63,6 +64,8 @@ class Coverage(BaseModel):
 class Comparison(BaseModel):
     ticker: str
     section: str
+    older_section: str = Field(description="The section's id in the older filing's form")
+    newer_section: str = Field(description="The section's id in the newer filing's form")
     older: FilingSummary
     newer: FilingSummary
     focus: str | None
@@ -154,7 +157,10 @@ def build_server(
     @mcp.tool(annotations=READ_ONLY)
     def compare_filings(
         ticker: str,
-        section: Annotated[str, Field(description="Section id, e.g. '1A' or '7' for 10-K")],
+        section: Annotated[
+            str,
+            Field(description="Section id, e.g. '1A' or '7' for 10-K, 'II-1A' or 'I-2' for 10-Q"),
+        ],
         form: Form = "10-K",
         older_accession: str | None = None,
         newer_accession: str | None = None,
@@ -162,14 +168,20 @@ def build_server(
         k: Annotated[int, Field(ge=1, le=10)] = 4,
     ) -> Comparison:
         """Evidence from one section of two filings (default: the latest two of the form).
-        With focus, the top passages on that topic from each filing. Without focus, the
-        newer filing's passages that changed most, each paired with its closest older one."""
+        The two accessions may be a 10-K and a 10-Q: the section is matched across forms
+        (10-K 1A with 10-Q II-1A, 7 with I-2). With focus, the top passages on that topic
+        from each filing. Without focus, the newer filing's passages that changed most,
+        each paired with its closest older one."""
         with clear_errors(), open_conn() as conn:
             if older_accession and newer_accession:
-                pair = {f.accession: f for f in latest_filings(conn, ticker, form, limit=50)}
+                pair = {
+                    f.accession: f
+                    for any_form in ("10-K", "10-Q")
+                    for f in latest_filings(conn, ticker, any_form, limit=50)
+                }
                 missing = [a for a in (older_accession, newer_accession) if a not in pair]
                 if missing:
-                    raise ToolError(f"Not indexed for {ticker} {form}: {', '.join(missing)}")
+                    raise ToolError(f"Not indexed for {ticker}: {', '.join(missing)}")
                 older, newer = sorted(
                     (pair[older_accession], pair[newer_accession]),
                     key=lambda f: (f.period_end or f.filed_at, f.filed_at),
@@ -179,20 +191,29 @@ def build_server(
                 if len(latest) < 2:
                     raise ToolError(f"Fewer than two {form} filings indexed for {ticker}.")
                 newer, older = latest
+            older_section = section_for_form(section, older.form)
+            newer_section = section_for_form(section, newer.form)
+            for filing, matched in ((older, older_section), (newer, newer_section)):
+                if matched is None:
+                    raise ToolError(f"Section {section} has no equivalent in a {filing.form}.")
+            assert older_section is not None and newer_section is not None
             retriever = Retriever(conn, embedder)
             older_passages: list[Passage] = []
             newer_passages: list[Passage] = []
             changed: list[ChangedPassage] = []
             if focus:
-                for filing, out in ((older, older_passages), (newer, newer_passages)):
-                    scoped = Filters(accessions=[filing.accession], sections=[section])
+                for filing, matched, out in ((older, older_section, older_passages),
+                                             (newer, newer_section, newer_passages)):  # fmt: skip
+                    scoped = Filters(accessions=[filing.accession], sections=[matched])
                     out.extend(retriever.search(focus, scoped, k))
             else:
                 changed = changed_passages(conn, embedder.model, older.accession,
-                                           newer.accession, section, k)  # fmt: skip
-        return Comparison(ticker=ticker.upper(), section=section, older=older, newer=newer,
-                          focus=focus, older_passages=older_passages,
-                          newer_passages=newer_passages, changed=changed)  # fmt: skip
+                                           newer.accession, older_section, newer_section,
+                                           k)  # fmt: skip
+        return Comparison(ticker=ticker.upper(), section=section, older_section=older_section,
+                          newer_section=newer_section, older=older, newer=newer, focus=focus,
+                          older_passages=older_passages, newer_passages=newer_passages,
+                          changed=changed)  # fmt: skip
 
     @mcp.tool(annotations=READ_ONLY)
     def list_coverage() -> Coverage:

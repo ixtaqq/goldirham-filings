@@ -60,6 +60,27 @@ SECTION_TITLES: dict[Form, dict[str, str]] = {
     },
 }
 REQUIRED_SECTIONS: dict[Form, tuple[str, ...]] = {"10-K": ("1A", "7"), "10-Q": ("I-2",)}
+# 10-K items and the 10-Q items that cover the same ground, so a 10-K can be compared with a
+# later 10-Q section by section.
+EQUIVALENT_SECTIONS = {
+    "1A": "II-1A", "3": "II-1", "5": "II-2", "7": "I-2", "7A": "I-3", "8": "I-1", "9A": "I-4",
+    "9B": "II-5",
+}  # fmt: skip
+
+
+def section_for_form(section: str, form: Form) -> str | None:
+    """The id of the same section in a filing of this form ('1A' in a 10-Q is 'II-1A'), or
+    None when that form has no such section."""
+    section = section.upper()
+    if section in SECTION_TITLES[form]:
+        return section
+    to_10q = EQUIVALENT_SECTIONS.get(section)
+    if form == "10-Q" and to_10q:
+        return to_10q
+    to_10k = {q: k for k, q in EQUIVALENT_SECTIONS.items()}.get(section)
+    return to_10k if form == "10-K" else None
+
+
 UNKNOWN_SECTION = "unknown"
 MIN_REQUIRED_CHARS = 1000
 

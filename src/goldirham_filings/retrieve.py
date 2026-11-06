@@ -10,9 +10,10 @@ import numpy as np
 import psycopg
 from pydantic import BaseModel
 
+from goldirham_filings.companies import BY_TICKER
 from goldirham_filings.edgar import Form
 from goldirham_filings.embed import Embedder
-from goldirham_filings.scope import parse_references, resolve_accessions
+from goldirham_filings.scope import parse_references, resolve_accessions, section_intent
 
 SearchMode = Literal["hybrid", "keyword", "vector"]
 RRF_K = 60
@@ -94,6 +95,13 @@ def filing_ages(conn: psycopg.Connection[tuple[Any, ...]], ids: list[int]) -> di
     return {int(r[0]): int(r[1]) for r in rows}
 
 
+class QuestionPart(BaseModel):
+    """One independently answerable part of a question: one filing or one company."""
+
+    label: str
+    filters: Filters
+
+
 def balance_groups(filters: Filters) -> list[Filters]:
     """One search per named filing when the question names several, so a long or
     keyword-dense filing cannot crowd the others out of the top k."""
@@ -160,13 +168,17 @@ class Retriever:
         self.recency_decay = recency_decay
 
     def scoped(self, query: str, filters: Filters) -> Filters | None:
-        """Restrict to the filings the query names ("most recent 10-Q", "fiscal 2025 10-K").
+        """Restrict to the filings the query names ("most recent 10-Q", "fiscal 2025 10-K")
+        and the sections it names ("risk factors"), unless the caller already chose them.
 
         Returns None when the query names an explicit period or fiscal year that no indexed
         filing has: answering from other periods would be answering a different question.
         Looser references that match nothing leave the filters unchanged."""
         if not self.scope_from_query or filters.accessions:
             return filters
+        sections = section_intent(query)
+        if sections and not filters.sections:
+            filters = filters.model_copy(update={"sections": sections})
         refs = parse_references(query)
         if not refs:
             return filters
@@ -177,6 +189,40 @@ class Retriever:
         if any(r.period_end or r.fiscal_years for r in refs):
             return None
         return filters
+
+    def parts(self, query: str, filters: Filters | None = None) -> list[QuestionPart]:
+        """A question that names several filings has one part per filing; one about several
+        companies that names no filing has one part per company. Empty otherwise."""
+        scoped = self.scoped(query, filters or Filters())
+        if scoped is None:
+            return []
+        if scoped.accessions and len(scoped.accessions) > 1:
+            rows = self.conn.execute(
+                """
+                SELECT f.accession, co.name, f.form, f.period_end FROM filings f
+                JOIN companies co ON co.cik = f.cik WHERE f.accession = ANY(%s)
+                ORDER BY co.ticker, f.period_end NULLS LAST, f.accession
+                """,
+                (scoped.accessions,),
+            ).fetchall()
+            return [
+                QuestionPart(
+                    label=f"{name}'s {form}" + (
+                        f" for the period ended {end:%B} {end.day}, {end.year}" if end else ""
+                    ),
+                    filters=scoped.model_copy(update={"accessions": [accession]}),
+                )
+                for accession, name, form, end in rows
+            ]  # fmt: skip
+        if scoped.tickers and len(scoped.tickers) > 1:
+            return [
+                QuestionPart(
+                    label=BY_TICKER[t.upper()].name if t.upper() in BY_TICKER else t.upper(),
+                    filters=scoped.model_copy(update={"tickers": [t]}),
+                )
+                for t in scoped.tickers
+            ]
+        return []
 
     def keyword_ids(self, query: str, filters: Filters) -> list[int]:
         tsquery = keyword_tsquery(query)
@@ -308,7 +354,7 @@ def get_passage(
 
 class FilingSummary(BaseModel):
     accession: str
-    form: str
+    form: Form
     period_end: date | None
     filed_at: date
     source_url: str
@@ -369,18 +415,21 @@ def changed_passages(
     model: str,
     older_accession: str,
     newer_accession: str,
-    section: str,
+    older_section: str,
+    newer_section: str,
     k: int,
 ) -> list[ChangedPassage]:
-    """Newer chunks whose closest older chunk in the same section is least similar:
-    new or rewritten language. Uses the stored embeddings, so no model call."""
+    """Newer chunks whose closest older chunk in the matching section is least similar:
+    new or rewritten language. The sections differ when the forms do (10-K 1A, 10-Q II-1A).
+    Uses the stored embeddings, so no model call."""
     rows = conn.execute(
         """
         WITH side AS (
             SELECT c.id, s.accession, e.embedding FROM chunks c
             JOIN sections s ON s.id = c.section_id
             JOIN embeddings e ON e.chunk_id = c.id AND e.model = %(model)s
-            WHERE upper(s.item) = upper(%(section)s) AND s.accession IN (%(older)s, %(newer)s)
+            WHERE (s.accession = %(older)s AND upper(s.item) = upper(%(older_section)s))
+               OR (s.accession = %(newer)s AND upper(s.item) = upper(%(newer_section)s))
         )
         SELECT n.id, best.id, best.similarity FROM side n
         LEFT JOIN LATERAL (
@@ -390,8 +439,8 @@ def changed_passages(
         WHERE n.accession = %(newer)s
         ORDER BY best.similarity ASC NULLS FIRST, n.id LIMIT %(k)s
         """,
-        {"model": model, "section": section.upper(), "older": older_accession,
-         "newer": newer_accession, "k": k},
+        {"model": model, "older_section": older_section, "newer_section": newer_section,
+         "older": older_accession, "newer": newer_accession, "k": k},
     ).fetchall()  # fmt: skip
     ids = [r[0] for r in rows] + [r[1] for r in rows if r[1] is not None]
     by_id = {p.chunk_id: p for p in passages_by_id(conn, ids)}

@@ -2,7 +2,7 @@
 
 For each dev comparison item whose two gold spans are in two filings of one ticker: is the
 newer filing's gold chunk among the k chunks that changed most versus the older filing
-(same section)? Writes benchmarks/changed-dev-YYYY-MM-DD.json.
+(the matching section of each form)? Writes benchmarks/changed-dev-YYYY-MM-DD.json.
 """
 
 import json
@@ -37,7 +37,8 @@ def main() -> None:
             }
             older, newer = sorted(spans, key=lambda s: dates[s.accession])
             changed = changed_passages(conn, cfg.embedding_model, older.accession,
-                                       newer.accession, newer.section, K)  # fmt: skip
+                                       newer.accession, older.section, newer.section,
+                                       K)  # fmt: skip
             newer_ids = [c.newer.chunk_id for c in changed]
             hit = any(span_hit(p, newer) for p in passages_by_id(conn, newer_ids))
             rows.append({

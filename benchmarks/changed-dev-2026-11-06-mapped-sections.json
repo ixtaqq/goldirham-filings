@@ -1,0 +1,41 @@
+{
+  "k": 8,
+  "rows": [
+    {
+      "item_id": "comparison-001",
+      "newer_section": "II-1A",
+      "older_section": "1A",
+      "newer_gold_in_changed_top_k": true
+    },
+    {
+      "item_id": "comparison-002",
+      "newer_section": "I-2",
+      "older_section": "7",
+      "newer_gold_in_changed_top_k": false
+    },
+    {
+      "item_id": "comparison-003",
+      "newer_section": "I-2",
+      "older_section": "7",
+      "newer_gold_in_changed_top_k": false
+    },
+    {
+      "item_id": "comparison-004",
+      "newer_section": "I-2",
+      "older_section": "1A",
+      "newer_gold_in_changed_top_k": false
+    },
+    {
+      "item_id": "comparison-005",
+      "newer_section": "II-1A",
+      "older_section": "1A",
+      "newer_gold_in_changed_top_k": false
+    },
+    {
+      "item_id": "comparison-006",
+      "newer_section": "I-2",
+      "older_section": "I-2",
+      "newer_gold_in_changed_top_k": false
+    }
+  ]
+}
