@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Goldirham Filings</title>
+<meta name="description" content="A local MCP server that answers questions about the 10-K and 10-Q filings of twelve AI-infrastructure companies, citing the exact passage or declining.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-sans@5.1.1/400.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-sans@5.1.1/600.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@5.1.1/400.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="wrap nav-row">
+    <a class="wordmark" href="#top">Goldirham Filings</a>
+    <nav aria-label="Sections">
+      <a href="#tools">Tools</a>
+      <a href="#results">Results</a>
+      <a href="#quickstart">Quickstart</a>
+      <a href="https://github.com/ixtaqq/goldirham-filings">View on GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero wrap" id="top">
+    <div class="hero-copy">
+      <h1>Answers from SEC filings, cited to the passage.</h1>
+      <p class="lede">A local MCP server for the 10-K and 10-Q filings of twelve AI-infrastructure companies. It cites, or it declines.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="https://github.com/ixtaqq/goldirham-filings">View on GitHub</a>
+        <a class="btn btn-ghost" href="#quickstart">Quickstart</a>
+      </div>
+    </div>
+
+    <figure class="answer" aria-label="A real answer from the tool">
+      <p class="q">What did NVIDIA report as Data Center revenue in its 10-Q for the quarter ended July 26, 2026?</p>
+      <p class="a">NVIDIA reported Data Center revenue of $89,023 million for the quarter ended July 26, 2026.<sup><a href="#cite-1">1</a></sup></p>
+      <div class="passage" id="cite-1">
+        <p class="src"><span>1</span> NVDA 10-Q, period ended 2026-07-26, Part I Item 1, characters 55,068 to 56,837</p>
+<pre>(Unaudited)
+(In millions)
+Revenue by Market Platform
+<mark>Data Center | $ | 89,023 | $ | 41,096 | $ | 164,269 | $ | 80,208</mark>
+Hyperscale | 48,710 | 24,168 | 91,761 | 46,428
+AI Clouds, Industrial, &amp; Enterprise | 40,313 | 16,928 | 72,508 | 33,780</pre>
+        <a class="edgar" href="https://www.sec.gov/Archives/edgar/data/1045810/000104581026000075/nvda-20260726.htm">Open the filing on EDGAR</a>
+      </div>
+      <figcaption>Unedited output of <code>filings answer</code>, captured 7 November 2026. Full JSON in <a href="examples/answered.json">answered.json</a>.</figcaption>
+    </figure>
+  </section>
+
+  <section class="decline">
+    <div class="wrap decline-row">
+      <p class="decline-q">Same question, for a quarter that isn't indexed:</p>
+      <p class="decline-a">&ldquo;The filings in the index don't answer this.&rdquo;</p>
+      <p class="decline-note">No borrowed quarter, no guess. The note says why: no indexed filing matches the question. <a href="examples/abstained.json">abstained.json</a></p>
+    </div>
+  </section>
+
+  <section class="wrap tools" id="tools">
+    <h2>Six read-only tools for any MCP client</h2>
+    <p class="section-lede">Claude Desktop, the MCP Inspector, or your own client. Arguments are JSON.</p>
+    <dl class="tool-grid">
+      <div>
+        <dt><code>answer_question</code></dt>
+        <dd>A cited answer or an abstention, with the passages used.</dd>
+        <dd class="args"><code>{"question": "Does Micron's fiscal 2025 10-K list customer concentration as a risk factor?", "tickers": ["MU"]}</code></dd>
+      </div>
+      <div>
+        <dt><code>search_filings</code></dt>
+        <dd>Ranked passages with ticker, form, period, section and offsets.</dd>
+        <dd class="args"><code>{"query": "export controls China", "tickers": ["AMAT"], "k": 3}</code></dd>
+      </div>
+      <div>
+        <dt><code>get_financial_fact</code></dt>
+        <dd>An exact XBRL value with unit, period, duration and source filing. Nothing is computed.</dd>
+        <dd class="args"><code>{"ticker": "AMD", "concept": "revenue", "fiscal_year": 2026, "fiscal_period": "Q3"}</code></dd>
+      </div>
+      <div>
+        <dt><code>compare_filings</code></dt>
+        <dd>One section of two filings, by topic or by what changed most. Works across a 10-K and a 10-Q.</dd>
+        <dd class="args"><code>{"ticker": "MSFT", "section": "1A", "k": 3}</code></dd>
+      </div>
+      <div>
+        <dt><code>get_passage</code></dt>
+        <dd>An exact span by accession, section and offsets, with surrounding text and the EDGAR link.</dd>
+        <dd class="args"><code>{"accession": "0001045810-26-000075", "section": "I-2", "start_char": 17134, "end_char": 17279}</code></dd>
+      </div>
+      <div>
+        <dt><code>list_coverage</code></dt>
+        <dd>Indexed companies, filing counts, newest filing per company and when the index was last updated.</dd>
+        <dd class="args"><code>{}</code></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="wrap how">
+    <h2>How an answer is built</h2>
+    <ol class="flow">
+      <li><strong>Fetch</strong><span>A polite EDGAR client stores each filing once, at most 6 requests a second.</span></li>
+      <li><strong>Section</strong><span>HTML becomes text, split on Item headings such as 1A and 7.</span></li>
+      <li><strong>Index</strong><span>About 500-token chunks in Postgres full-text and pgvector.</span></li>
+      <li><strong>Retrieve</strong><span>Both searches merged by reciprocal rank fusion, scoped to the filings the question names.</span></li>
+      <li><strong>Answer</strong><span><code>qwen3:8b</code> answers each part separately, and every sentence must cite a passage.</span></li>
+      <li><strong>Check</strong><span>Uncited sentences and numbers missing from their passage are removed. Wrong periods are flagged.</span></li>
+    </ol>
+  </section>
+
+  <section class="wrap results" id="results">
+    <h2>Measured on 25 held-out questions. Three of five targets missed.</h2>
+    <p class="section-lede">Questions drafted from filings no tuning run had used, checked by hand, run once.</p>
+    <table>
+      <thead>
+        <tr><th scope="col">Metric</th><th scope="col">v1.0</th><th scope="col">Target</th><th scope="col">Result</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Recall@10</th><td>0.833</td><td>&ge; 0.85</td><td class="miss">Missed</td></tr>
+        <tr><th scope="row">Unanswerable questions declined</th><td>0.50<span class="wide-only"> (2 of 4)</span></td><td>&ge; 0.80</td><td class="miss">Missed</td></tr>
+        <tr><th scope="row">Answerable questions wrongly declined</th><td>0.095</td><td>&le; 0.10</td><td>Met</td></tr>
+        <tr><th scope="row">Citation precision</th><td>0.614</td><td>&ge; 0.90</td><td class="miss">Missed</td></tr>
+        <tr><th scope="row">Answers with unsupported numbers</th><td>0</td><td>0</td><td>Met</td></tr>
+      </tbody>
+    </table>
+    <p class="fine">Sources: <a href="https://github.com/ixtaqq/goldirham-filings/blob/main/benchmarks/eval-all-2026-11-06-heldout-v1.json">eval-all-2026-11-06-heldout-v1.json</a> and <a href="https://github.com/ixtaqq/goldirham-filings/blob/main/benchmarks/retrieval-all-2026-11-06-heldout-v1.json">retrieval-all-2026-11-06-heldout-v1.json</a>. With 4 unanswerable and 21 answerable questions, one item moves a rate by 4 to 25 points. The README explains each miss.</p>
+  </section>
+
+  <section class="wrap limits">
+    <h2>What it doesn't do yet</h2>
+    <ul>
+      <li><strong>No 20-F filers.</strong> TSM, ASML and ARM aren't covered.</li>
+      <li><strong>Comparisons sit side by side.</strong> Each filing is answered on its own, and the answer doesn't compare them.</li>
+      <li><strong>A figure can carry the wrong duration.</strong> One held-out answer gave a nine-month total as the quarter's.</li>
+      <li><strong>The model is small.</strong> <code>qwen3:8b</code> wrongly declined 2 of 21 answerable held-out questions.</li>
+      <li><strong>Most eval questions are unchecked.</strong> Only the 25 held-out questions were checked by hand.</li>
+    </ul>
+  </section>
+
+  <section class="wrap quick" id="quickstart">
+    <div class="quick-copy">
+      <h2>One script from clone to server</h2>
+      <p>Needs Python 3.11+, Docker Desktop and Ollama, all running, and about 7 GB of disk. The setup script indexes 96 filings, loads XBRL figures and checks every dependency. The first run takes about six minutes on a machine with a GPU, plus downloads. Rerunning it is safe.</p>
+      <p>Then <code>filings mcp-config</code> prints the Claude Desktop entry for your machine.</p>
+    </div>
+<pre class="cmd"><code>git clone https://github.com/ixtaqq/goldirham-filings.git
+cd goldirham-filings
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1</code></pre>
+    <p class="tickers" aria-label="Indexed companies">NVDA AMD AVGO MSFT AMZN GOOGL META INTC MU AMAT LRCX KLAC</p>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p>Summarizes what filings say. Not investment advice.</p>
+  <p>MIT licensed. <a href="https://github.com/ixtaqq/goldirham-filings">View on GitHub</a></p>
+</footer>
+</body>
+</html>
