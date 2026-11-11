@@ -6,7 +6,7 @@ import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import date
-from functools import wraps
+from functools import partial, wraps
 from typing import Annotated, Any, ParamSpec, TypeVar
 
 import psycopg
@@ -40,7 +40,15 @@ from goldirham_filings.retrieve import (
     last_run,
     latest_filings,
 )
-from goldirham_filings.xbrl import ALIASES, FactLookup, FiscalPeriod, company_facts, lookup
+from goldirham_filings.xbrl import (
+    ALIASES,
+    Fact,
+    FactLookup,
+    FiscalPeriod,
+    company_facts,
+    filing_facts,
+    lookup,
+)
 
 INSTRUCTIONS = """Search and cite the SEC 10-K and 10-Q filings of tracked AI-infrastructure
 companies. Call list_coverage first to see which companies, forms and periods are indexed.
@@ -104,6 +112,17 @@ def clear_errors() -> Iterator[None]:
         raise ToolError(str(error)) from error
 
 
+def cited_facts(conn: psycopg.Connection[tuple[Any, ...]], cited: list[Passage]) -> list[Fact]:
+    """The XBRL facts reported by the filings these passages come from."""
+    return [
+        fact
+        for ticker in {p.ticker for p in cited}
+        for fact in filing_facts(
+            conn, BY_TICKER[ticker].cik_int, [p.accession for p in cited if p.ticker == ticker]
+        )
+    ]
+
+
 def _result_fields(result: object) -> dict[str, object]:
     """What the log records about a result: counts and fixed reasons, never the question,
     the query or passage text."""
@@ -146,6 +165,8 @@ def build_server(
     embedder: Embedder,
     chat: Chat,
     min_similarity: float = 0.0,
+    drop_unsupported_periods: bool = False,
+    check_fact_durations: bool = False,
 ) -> MCPServer:
     mcp = MCPServer("goldirham-filings", instructions=INSTRUCTIONS)
 
@@ -208,7 +229,13 @@ def build_server(
         filters = Filters(tickers=tickers, forms=forms, period_from=period_from,
                           period_to=period_to)  # fmt: skip
         with clear_errors(), open_conn() as conn:
-            answerer = Answerer(Retriever(conn, embedder), chat, min_similarity=min_similarity)
+            answerer = Answerer(
+                Retriever(conn, embedder),
+                chat,
+                min_similarity=min_similarity,
+                drop_unsupported_periods=drop_unsupported_periods,
+                facts=partial(cited_facts, conn) if check_fact_durations else None,
+            )
             result = answerer.answer(question, filters)
             note = embedding_note(embedder.model, *embedding_coverage(conn, embedder.model))
         return result.model_copy(update={"notes": [*result.notes, note]}) if note else result
@@ -371,6 +398,8 @@ def main() -> None:
         embedder,
         OllamaChat(cfg.answer_model, cfg.ollama_url),
         cfg.abstain_min_similarity,
+        cfg.drop_unsupported_periods,
+        cfg.check_fact_durations,
     )
     server.run()
 

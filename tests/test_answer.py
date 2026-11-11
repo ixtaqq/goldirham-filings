@@ -1,9 +1,11 @@
 import json
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 from goldirham_filings.answer import NO_ANSWER, PART_INSTRUCTION, RETRY_REMINDER, Answerer
 from goldirham_filings.retrieve import Filters, Passage, QuestionPart
+from goldirham_filings.xbrl import Fact
 
 
 def passage(chunk_id: int, text: str, similarity: float = 0.8) -> Passage:
@@ -260,6 +262,37 @@ def test_a_wrong_period_is_only_flagged_by_default() -> None:
     result = Answerer(FakeSearcher([meta_q3(META_TEXT)]), FakeChat(META_REPLY)).answer("q")
     assert result.status == "answered"
     assert result.sentences[0].unsupported_periods == ["fourth quarter of 2026"]
+
+
+NINE_MONTH_CAPEX = Fact(
+    cik=1045810, taxonomy="us-gaap", concept="Capex", label="Capex", unit="USD",
+    period_start=date(2025, 10, 27), period_end=date(2026, 7, 26), value=Decimal(9_000_000_000),
+    accession="0001045810-26-000075", form="10-Q", fiscal_year=2027, fiscal_period="Q2",
+    filed=date(2026, 8, 26),
+)  # fmt: skip
+CAPEX_TEXT = "Capital expenditures were $9,000 million."
+CAPEX_SENTENCE = "Capital expenditures for the quarter were $9,000 million."
+CAPEX_REPLY = {"answerable": True, "sentences": [{"text": CAPEX_SENTENCE, "citations": [1]}]}
+
+
+def test_a_figure_from_the_wrong_duration_is_flagged_but_kept() -> None:
+    seen: list[list[int]] = []
+
+    def facts(cited: list[Passage]) -> list[Fact]:
+        seen.append([p.chunk_id for p in cited])
+        return [NINE_MONTH_CAPEX]
+
+    searcher = FakeSearcher([passage(11, CAPEX_TEXT)])
+    result = Answerer(searcher, FakeChat(CAPEX_REPLY), facts=facts).answer("q")
+    assert result.status == "answered"
+    assert result.sentences[0].unsupported_durations == ["$9,000 million"]
+    assert "figures reported for a different duration: $9,000 million" in result.notes
+    assert seen == [[11]]
+
+
+def test_durations_are_not_checked_without_a_fact_source() -> None:
+    result = Answerer(FakeSearcher([passage(11, CAPEX_TEXT)]), FakeChat(CAPEX_REPLY)).answer("q")
+    assert result.sentences[0].unsupported_durations == []
 
 
 def test_sentences_with_unsupported_numbers_are_removed_by_default() -> None:

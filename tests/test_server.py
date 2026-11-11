@@ -47,6 +47,44 @@ async def call(client: Client, tool: str, **arguments: Any) -> dict[str, Any]:
     return content
 
 
+class WrongYearChat:
+    def complete_json(self, system: str, user: str, schema: dict[str, Any]) -> str:
+        return json.dumps({"answerable": True, "sentences": [
+            {"text": "In fiscal 1999, NVIDIA reported its Data Center revenue.",
+             "citations": [1]}]})  # fmt: skip
+
+
+async def test_period_removal_reaches_the_answer_tool(database_url: str) -> None:
+    server = build_server(
+        lambda: connect(database_url, read_only=True), FixtureEmbedder(), WrongYearChat(),
+        drop_unsupported_periods=True,
+    )  # fmt: skip
+    async with Client(server) as c:
+        answer = await call(c, "answer_question", question=NVDA_Q, tickers=["NVDA"])
+    assert answer["status"] == "abstained"
+
+
+async def test_period_flags_stay_flags_by_default(database_url: str) -> None:
+    server = build_server(
+        lambda: connect(database_url, read_only=True), FixtureEmbedder(), WrongYearChat()
+    )
+    async with Client(server) as c:
+        answer = await call(c, "answer_question", question=NVDA_Q, tickers=["NVDA"])
+    assert answer["status"] == "answered"
+    assert answer["sentences"][0]["unsupported_periods"] == ["fiscal 1999"]
+
+
+async def test_duration_check_queries_facts_for_cited_filings(database_url: str) -> None:
+    server = build_server(
+        lambda: connect(database_url, read_only=True), FixtureEmbedder(), CitingChat(),
+        check_fact_durations=True,
+    )  # fmt: skip
+    async with Client(server) as c:
+        answer = await call(c, "answer_question", question=NVDA_Q, tickers=["NVDA"])
+    assert answer["status"] == "answered"
+    assert answer["sentences"][0]["unsupported_durations"] == []
+
+
 async def test_all_tools_are_listed_read_only(client: Client) -> None:
     tools = (await client.list_tools()).tools
     assert sorted(t.name for t in tools) == [
