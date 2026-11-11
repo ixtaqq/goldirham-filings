@@ -4,6 +4,18 @@ Every change below is measured or explained in `docs/decisions.tsv`, with its ev
 
 ## Unreleased
 
+### Added
+- `DROP_UNSUPPORTED_PERIODS` removes sentences naming a period that matches neither the cited
+  filing nor its text. Off by default until unanswerable accuracy is measured on the dev index.
+- `CHECK_FACT_DURATIONS` flags a dollar amount the cited filing reports only for other
+  durations, such as a nine-month figure quoted as the quarter's. Off by default.
+- `abstention_accuracy_with_dated_declines` also credits answers that say the value isn't
+  reported and give only other periods' figures. `abstention_accuracy` is unchanged.
+- `scripts/mark_checked.py --alternates` records a review of single alternate spans.
+- 20-F support behind `INGEST_FOREIGN_FILERS`, off by default: migration 0005, `F-` item ids
+  and the `20-F` form in the tool schemas. It has only run on synthetic text, and XBRL facts
+  for these filers aren't loaded.
+
 ### Changed
 - MCP tool inputs have limits, shown in their schemas: 2000 characters for `query`, `question`
   and `focus`, 32 items per filter list, and 20000 characters per `get_passage` span.

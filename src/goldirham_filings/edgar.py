@@ -10,8 +10,8 @@ from typing import Any, Literal, cast
 
 import httpx
 
-Form = Literal["10-K", "10-Q"]
-FORMS: tuple[Form, ...] = ("10-K", "10-Q")
+Form = Literal["10-K", "10-Q", "20-F"]
+FORMS: tuple[Form, ...] = ("10-K", "10-Q", "20-F")
 RETRY_STATUSES = {429, 500, 502, 503, 504}
 # An accession becomes a file name and a URL segment, so it must be one path component.
 SAFE_ACCESSION = re.compile(r"[\w-]+")

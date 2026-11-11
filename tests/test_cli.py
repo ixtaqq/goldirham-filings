@@ -40,7 +40,9 @@ def stored_facts(monkeypatch: pytest.MonkeyPatch) -> list[int]:
 
     monkeypatch.setattr("goldirham_filings.cli.connect", no_database)
     monkeypatch.setattr("goldirham_filings.cli.EdgarClient", lambda *args: object())
-    monkeypatch.setattr("goldirham_filings.cli.update", lambda *args: IngestReport([], []))
+    monkeypatch.setattr(
+        "goldirham_filings.cli.update", lambda *args, **kwargs: IngestReport([], [])
+    )
     monkeypatch.setattr("goldirham_filings.cli.embed_missing", lambda *args: 0)
     monkeypatch.setattr("goldirham_filings.xbrl.fetch_company_facts", lambda *args: {})
     monkeypatch.setattr("goldirham_filings.xbrl.store_facts", store)

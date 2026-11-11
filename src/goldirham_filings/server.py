@@ -19,7 +19,7 @@ from goldirham_filings.answer import Answerer, AnswerResult, Chat, OllamaChat
 from goldirham_filings.companies import BY_TICKER, TRACKED_COMPANIES
 from goldirham_filings.config import settings
 from goldirham_filings.db import connect
-from goldirham_filings.edgar import Form
+from goldirham_filings.edgar import FORMS, Form
 from goldirham_filings.embed import Embedder, OllamaEmbedder
 from goldirham_filings.errors import DependencyError, database_errors
 from goldirham_filings.parse import section_for_form
@@ -68,7 +68,9 @@ Text = Annotated[str, Field(max_length=MAX_TEXT)]
 Tickers = Annotated[
     list[str] | None, Field(max_length=MAX_LIST, description="Ticker symbols, e.g. ['NVDA']")
 ]
-Forms = Annotated[list[Form] | None, Field(max_length=MAX_LIST, description="'10-K' and/or '10-Q'")]
+Forms = Annotated[
+    list[Form] | None, Field(max_length=MAX_LIST, description="'10-K', '10-Q' and/or '20-F'")
+]
 PeriodFrom = Annotated[date | None, Field(description="Earliest fiscal period end, inclusive")]
 PeriodTo = Annotated[date | None, Field(description="Latest fiscal period end, inclusive")]
 
@@ -269,7 +271,7 @@ def build_server(
             if older_accession and newer_accession:
                 pair = {
                     f.accession: f
-                    for any_form in ("10-K", "10-Q")
+                    for any_form in FORMS
                     for f in latest_filings(conn, ticker, any_form, limit=50)
                 }
                 missing = [a for a in (older_accession, newer_accession) if a not in pair]
@@ -355,11 +357,14 @@ def build_server(
         with clear_errors(), open_conn() as conn:
             rows = coverage(conn)
             run = last_run(conn)
-        foreign = [c.ticker for c in TRACKED_COMPANIES if c.filer_type == "foreign"]
+        indexed = {r.ticker for r in rows if sum(r.forms.values()) > 0}
+        foreign = [c.ticker for c in TRACKED_COMPANIES
+                   if c.filer_type == "foreign" and c.ticker not in indexed]  # fmt: skip
         return Coverage(
-            companies=[r for r in rows if sum(r.forms.values()) > 0],
+            companies=[r for r in rows if r.ticker in indexed],
             not_covered=[
-                f"{', '.join(foreign)}: foreign private issuers (20-F/6-K), not indexed",
+                *([f"{', '.join(foreign)}: foreign private issuers (20-F/6-K), not indexed"]
+                  if foreign else []),
                 *(f"{r.ticker}: tracked but not yet ingested" for r in rows
                   if r.filer_type == "domestic" and sum(r.forms.values()) == 0),
             ],

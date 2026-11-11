@@ -56,4 +56,6 @@ is a reviewed change, never a way to make the gate pass.
 - Intel files use a cross-reference index instead of Item headings. Its 10-Qs are split on its own
   headings (`parse.OWN_HEADINGS`); its 10-Ks have no risk-factors heading and index as one
   `unknown` section by design.
-- TSM, ASML and ARM are 20-F filers and are not ingested.
+- TSM, ASML and ARM are 20-F filers and are not ingested unless `INGEST_FOREIGN_FILERS=true`.
+  The 20-F parser has only run on synthetic text; check it on a real filing before relying on
+  it. Their XBRL facts aren't loaded, and 6-Ks aren't indexed.

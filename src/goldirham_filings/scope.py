@@ -19,7 +19,7 @@ import psycopg
 from goldirham_filings.edgar import FORMS, Form
 from goldirham_filings.parse import UNKNOWN_SECTION
 
-FORM_PATTERN = re.compile(r"\b(10-[KQ])s?\b(?!/A)|\b(annual|quarterly) reports?\b", re.I)
+FORM_PATTERN = re.compile(r"\b(10-[KQ]|20-F)s?\b(?!/A)|\b(annual|quarterly) reports?\b", re.I)
 COUNT_WORDS = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "eight": 8}
 LATEST = re.compile(
     r"\b(?:most recent|latest|last)\s+(?:(two|three|four|five|six|eight|\d{1,2})\s+)?"
@@ -35,10 +35,10 @@ QUARTER_ENDED = re.compile(r"\b(?:quarter|period|year) ended\s+" + DATE, re.I)
 PERIOD_END_TOLERANCE_DAYS = 7
 # Section names a question can use, and the 10-K and 10-Q items they mean.
 SECTION_INTENTS = (
-    (re.compile(r"\brisk factors?\b", re.I), ("1A", "II-1A")),
-    (re.compile(r"\bMD&A\b|\bmanagement'?s discussion\b", re.I), ("7", "I-2")),
+    (re.compile(r"\brisk factors?\b", re.I), ("1A", "II-1A", "F-3")),
+    (re.compile(r"\bMD&A\b|\bmanagement'?s discussion\b", re.I), ("7", "I-2", "F-5")),
     (re.compile(r"\blegal proceedings\b", re.I), ("3", "II-1")),
-    (re.compile(r"\bquantitative and qualitative disclosures\b", re.I), ("7A", "I-3")),
+    (re.compile(r"\bquantitative and qualitative disclosures\b", re.I), ("7A", "I-3", "F-11")),
 )
 
 
@@ -83,7 +83,9 @@ def parse_references(text: str) -> list[FilingReference]:
     matches = list(FORM_PATTERN.finditer(text))
     for n, match in enumerate(matches):
         named = (match.group(1) or match.group(2)).upper()
-        form: Form = "10-K" if named in ("10-K", "ANNUAL") else "10-Q"
+        form: Form = (
+            "20-F" if named == "20-F" else "10-K" if named in ("10-K", "ANNUAL") else "10-Q"
+        )
         before = text[matches[n - 1].end() if n else 0 : match.start()]
         after = text[match.end() : matches[n + 1].start() if n + 1 < len(matches) else len(text)]
         latest = LATEST.search(before)

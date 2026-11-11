@@ -140,7 +140,9 @@ def test_resolve_respects_the_callers_period_filter(
 
 def test_named_sections_cover_both_forms_and_unsectioned_filings() -> None:
     assert section_intent("Does Micron list customer concentration as a risk factor?") == [
-        "1A", "II-1A", "unknown"
+        "1A", "II-1A", "F-3", "unknown"
     ]  # fmt: skip
-    assert section_intent("What does AMD's MD&A say about supply?") == ["7", "I-2", "unknown"]
+    assert section_intent("What does AMD's MD&A say about supply?") == [
+        "7", "I-2", "F-5", "unknown"
+    ]  # fmt: skip
     assert section_intent("What risks does AMD face from export controls?") == []
