@@ -1,7 +1,6 @@
 """MCP tools end to end over the fixture corpus, through the in-process MCP client."""
 
 import json
-import os
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -32,11 +31,10 @@ class CitingChat:
 
 
 @pytest.fixture
-async def client() -> AsyncIterator[Client]:
-    url = os.environ.get("TEST_DATABASE_URL")
-    if not url:
-        pytest.skip("TEST_DATABASE_URL is not set")
-    server = build_server(lambda: connect(url, read_only=True), FixtureEmbedder(), CitingChat())
+async def client(database_url: str) -> AsyncIterator[Client]:
+    server = build_server(
+        lambda: connect(database_url, read_only=True), FixtureEmbedder(), CitingChat()
+    )
     async with Client(server) as c:
         yield c
 
@@ -140,11 +138,10 @@ class UnembeddedModel(FixtureEmbedder):
         self.model = "mxbai-embed-large"
 
 
-async def test_search_without_vectors_for_the_model_says_it_is_keyword_only() -> None:
-    url = os.environ.get("TEST_DATABASE_URL")
-    if not url:
-        pytest.skip("TEST_DATABASE_URL is not set")
-    server = build_server(lambda: connect(url), UnembeddedModel(), CitingChat())
+async def test_search_without_vectors_for_the_model_says_it_is_keyword_only(
+    database_url: str,
+) -> None:
+    server = build_server(lambda: connect(database_url), UnembeddedModel(), CitingChat())
     async with Client(server) as c:
         result = await call(c, "search_filings", query=NVDA_Q, tickers=["NVDA"], k=5)
         answer = await call(c, "answer_question", question=NVDA_Q, tickers=["NVDA"])
