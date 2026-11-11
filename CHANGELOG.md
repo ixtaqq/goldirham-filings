@@ -2,7 +2,10 @@
 
 Every change below is measured or explained in `docs/decisions.tsv`, with its evidence file.
 
-## Unreleased
+## 1.1.0 (not yet released)
+
+Run `.venv\Scripts\alembic upgrade head` after updating. Clients sending over-long inputs, or
+one accession to `compare_filings`, now get an error; see Changed.
 
 ### Added
 - `DROP_UNSUPPORTED_PERIODS` removes sentences naming a period that matches neither the cited

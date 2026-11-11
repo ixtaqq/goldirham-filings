@@ -1,0 +1,189 @@
+{
+  "config": {
+    "answer_model": "qwen3:8b",
+    "drop_periods": false
+  },
+  "corpus": "CI fixture corpus, dev-split unanswerable items, keyword retrieval",
+  "answers": {
+    "items": 6,
+    "declines_by_type": {
+      "unanswerable": "6/6"
+    },
+    "false_declines_with_gold_in_passages": 0,
+    "citation_precision": null,
+    "citation_precision_unchecked_alternates": null,
+    "answers_with_unsupported_numbers": 0,
+    "answers_with_unsupported_periods": 0,
+    "abstention_accuracy": 1,
+    "abstention_accuracy_with_dated_declines": 1,
+    "false_abstention_rate": null,
+    "judge_correct_rate": null,
+    "judge_note": "local 8B judge; indicative until compared with a human spot-check"
+  },
+  "retrieval_items": [
+    {
+      "item_id": "unanswerable-001",
+      "item_type": "unanswerable",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": null
+    },
+    {
+      "item_id": "unanswerable-002",
+      "item_type": "unanswerable",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": null
+    },
+    {
+      "item_id": "unanswerable-003",
+      "item_type": "unanswerable",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": null
+    },
+    {
+      "item_id": "unanswerable-004",
+      "item_type": "unanswerable",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": null
+    },
+    {
+      "item_id": "unanswerable-005",
+      "item_type": "unanswerable",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": null
+    },
+    {
+      "item_id": "unanswerable-006",
+      "item_type": "unanswerable",
+      "recall_at_5": 0.0,
+      "recall_at_8": 0.0,
+      "recall_at_10": 0.0,
+      "reciprocal_rank": 0.0,
+      "top_similarity": null
+    }
+  ],
+  "answer_items": [
+    {
+      "item_id": "unanswerable-001",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "no indexed filing matches the question"
+      ],
+      "dated_decline": false
+    },
+    {
+      "item_id": "unanswerable-002",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ],
+      "dated_decline": false
+    },
+    {
+      "item_id": "unanswerable-003",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ],
+      "dated_decline": false
+    },
+    {
+      "item_id": "unanswerable-004",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ],
+      "dated_decline": false
+    },
+    {
+      "item_id": "unanswerable-005",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ],
+      "dated_decline": false
+    },
+    {
+      "item_id": "unanswerable-006",
+      "item_type": "unanswerable",
+      "answerable": false,
+      "abstained": true,
+      "citation_precision": null,
+      "citation_precision_unchecked_alternates": null,
+      "unsupported_numbers": 0,
+      "unsupported_periods": 0,
+      "verdict": "not_applicable",
+      "answer": "The filings in the index don't answer this.",
+      "gold_in_passages": false,
+      "cited": [],
+      "notes": [
+        "model reported the passages do not answer it"
+      ],
+      "dated_decline": false
+    }
+  ]
+}
