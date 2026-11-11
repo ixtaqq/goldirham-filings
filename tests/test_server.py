@@ -36,7 +36,7 @@ async def client() -> AsyncIterator[Client]:
     url = os.environ.get("TEST_DATABASE_URL")
     if not url:
         pytest.skip("TEST_DATABASE_URL is not set")
-    server = build_server(lambda: connect(url), FixtureEmbedder(), CitingChat())
+    server = build_server(lambda: connect(url, read_only=True), FixtureEmbedder(), CitingChat())
     async with Client(server) as c:
         yield c
 

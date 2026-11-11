@@ -48,8 +48,14 @@ Answers summarize filings and are not investment advice."""
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=False)
 
-Tickers = Annotated[list[str] | None, Field(description="Ticker symbols, e.g. ['NVDA']")]
-Forms = Annotated[list[Form] | None, Field(description="'10-K' and/or '10-Q'")]
+MAX_TEXT = 2000
+MAX_LIST = 32
+
+Text = Annotated[str, Field(max_length=MAX_TEXT)]
+Tickers = Annotated[
+    list[str] | None, Field(max_length=MAX_LIST, description="Ticker symbols, e.g. ['NVDA']")
+]
+Forms = Annotated[list[Form] | None, Field(max_length=MAX_LIST, description="'10-K' and/or '10-Q'")]
 PeriodFrom = Annotated[date | None, Field(description="Earliest fiscal period end, inclusive")]
 PeriodTo = Annotated[date | None, Field(description="Latest fiscal period end, inclusive")]
 
@@ -103,12 +109,14 @@ def build_server(
 
     @mcp.tool(annotations=READ_ONLY)
     def search_filings(
-        query: str,
+        query: Text,
         tickers: Tickers = None,
         forms: Forms = None,
         period_from: PeriodFrom = None,
         period_to: PeriodTo = None,
-        sections: Annotated[list[str] | None, Field(description="e.g. ['1A', 'II-1A']")] = None,
+        sections: Annotated[
+            list[str] | None, Field(max_length=MAX_LIST, description="e.g. ['1A', 'II-1A']")
+        ] = None,
         k: Annotated[int, Field(ge=1, le=25)] = 8,
     ) -> SearchResult:
         """Hybrid keyword and semantic search. Returns ranked passages with filing, section
@@ -144,7 +152,7 @@ def build_server(
 
     @mcp.tool(annotations=READ_ONLY)
     def answer_question(
-        question: str,
+        question: Text,
         tickers: Tickers = None,
         forms: Forms = None,
         period_from: PeriodFrom = None,
@@ -170,7 +178,9 @@ def build_server(
         form: Form = "10-K",
         older_accession: str | None = None,
         newer_accession: str | None = None,
-        focus: Annotated[str | None, Field(description="Topic to align on")] = None,
+        focus: Annotated[
+            str | None, Field(max_length=MAX_TEXT, description="Topic to align on")
+        ] = None,
         k: Annotated[int, Field(ge=1, le=10)] = 4,
     ) -> Comparison:
         """Evidence from one section of two filings (default: the latest two of the form).
@@ -178,6 +188,10 @@ def build_server(
         (10-K 1A with 10-Q II-1A, 7 with I-2). With focus, the top passages on that topic
         from each filing. Without focus, the newer filing's passages that changed most,
         each paired with its closest older one."""
+        if bool(older_accession) != bool(newer_accession):
+            raise ToolError("Give older_accession and newer_accession together, or neither.")
+        if older_accession and older_accession == newer_accession:
+            raise ToolError("older_accession and newer_accession must be different filings.")
         with clear_errors(), open_conn() as conn:
             if older_accession and newer_accession:
                 pair = {
@@ -292,16 +306,20 @@ def startup_warnings(
     return [note] if note else []
 
 
+def open_read_only() -> psycopg.Connection[tuple[Any, ...]]:
+    return connect(read_only=True)
+
+
 def main() -> None:
     cfg = settings()
-    for warning in startup_warnings(connect, cfg.embedding_model, cfg.database_url):
+    for warning in startup_warnings(open_read_only, cfg.embedding_model, cfg.database_url):
         print(f"goldirham-filings: warning: {warning}", file=sys.stderr)
     try:
         embedder = OllamaEmbedder(cfg.embedding_model, cfg.ollama_url)
     except DependencyError as error:
         sys.exit(f"goldirham-filings: error: {error}")
     server = build_server(
-        connect,
+        open_read_only,
         embedder,
         OllamaChat(cfg.answer_model, cfg.ollama_url),
         cfg.abstain_min_similarity,

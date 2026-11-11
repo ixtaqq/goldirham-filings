@@ -103,6 +103,66 @@ async def test_tools_report_a_down_database_as_a_clear_error() -> None:
             assert "is not reachable. Start Docker Desktop" in text, text
 
 
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("accessions", "expected"),
+    [
+        ({"older_accession": "A"}, "together"),
+        ({"newer_accession": "A"}, "together"),
+        ({"older_accession": "A", "newer_accession": "A"}, "different filings"),
+    ],
+)
+async def test_compare_filings_needs_two_different_accessions(
+    accessions: dict[str, str], expected: str
+) -> None:
+    embedder = OllamaEmbedder("nomic-embed-text", URL, transport=httpx.MockTransport(refusing))
+    server = build_server(unreachable_database, embedder, NoChat())
+    async with Client(server) as client:
+        result = await client.call_tool(
+            "compare_filings", {"ticker": "NVDA", "section": "1A", **accessions}
+        )
+    assert result.is_error
+    text = result.content[0].text  # type: ignore[union-attr]
+    assert expected in text, text
+
+
+LONG = "x" * 2001
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("tool", "arguments"),
+    [
+        ("search_filings", {"query": LONG}),
+        ("answer_question", {"question": LONG}),
+        ("compare_filings", {"ticker": "NVDA", "section": "1A", "focus": LONG}),
+        ("search_filings", {"query": "x", "tickers": ["NVDA"] * 33}),
+        ("search_filings", {"query": "x", "sections": ["1A"] * 33}),
+        ("answer_question", {"question": "x", "forms": ["10-K"] * 33}),
+    ],
+)
+async def test_oversized_inputs_are_refused_before_the_database(
+    tool: str, arguments: dict[str, object]
+) -> None:
+    embedder = OllamaEmbedder("nomic-embed-text", URL, transport=httpx.MockTransport(refusing))
+    server = build_server(unreachable_database, embedder, NoChat())
+    async with Client(server) as client:
+        result = await client.call_tool(tool, arguments)
+    assert result.is_error
+    text = result.content[0].text  # type: ignore[union-attr]
+    assert "is not reachable" not in text, text
+
+
+@pytest.mark.anyio
+async def test_a_query_at_the_limit_is_accepted() -> None:
+    embedder = OllamaEmbedder("nomic-embed-text", URL, transport=httpx.MockTransport(refusing))
+    server = build_server(unreachable_database, embedder, NoChat())
+    async with Client(server) as client:
+        result = await client.call_tool("search_filings", {"query": "x" * 2000})
+    text = result.content[0].text  # type: ignore[union-attr]
+    assert "is not reachable" in text, text
+
+
 def test_cli_exits_with_the_message_when_ollama_is_down(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
