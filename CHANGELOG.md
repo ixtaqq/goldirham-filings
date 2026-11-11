@@ -22,6 +22,11 @@ Every change below is measured or explained in `docs/decisions.tsv`, with its ev
 - A question naming an impossible date, such as June 31, no longer raises an error.
 - An EDGAR accession that isn't a single path component is refused.
 
+### Security
+- `certifi` 2026.10.23 removes the emSign root whose intermediate CA keys were compromised
+  (GHSA-6q48-6c7w-9gw2). `httpx` trusts this bundle for EDGAR requests.
+- CI and `scripts\check.ps1` run `pip-audit` on the lockfile.
+
 ## 1.0.0 (2026-11-06)
 
 Released with three of five held-out targets missed. Results on 25 owner-checked held-out
