@@ -162,6 +162,10 @@ PERIOD_NAME = re.compile(
 )
 
 
+# Filings often name a year without "fiscal": "15% for 2026 from 40% for 2025".
+BARE_YEAR = re.compile(r"\b(?:for|in|during)\s+(\d{4})\b", re.I)
+
+
 @dataclass(frozen=True)
 class PeriodName:
     text: str
@@ -217,6 +221,8 @@ def period_supported(name: PeriodName, passage: Passage) -> bool:
     if not name.fiscal and end is not None and end.year == name.year:
         if name.quarter is None or (end.month - 1) // 3 + 1 == name.quarter:
             return True
+    if name.quarter is None and str(name.year) in BARE_YEAR.findall(passage.text):
+        return True
     return any(
         n.year == name.year and (name.quarter is None or n.quarter == name.quarter)
         for n in period_names(passage.text)
@@ -267,12 +273,14 @@ class Answerer:
         k: int = 8,
         min_similarity: float = 0.0,
         drop_unsupported_numbers: bool = True,
+        drop_unsupported_periods: bool = False,
     ) -> None:
         self.retriever = retriever
         self.chat = chat
         self.k = k
         self.min_similarity = min_similarity
         self.drop_unsupported_numbers = drop_unsupported_numbers
+        self.drop_unsupported_periods = drop_unsupported_periods
 
     def answer(self, question: str, filters: Filters | None = None) -> AnswerResult:
         parts = self.retriever.parts(question, filters)
@@ -306,6 +314,10 @@ class Answerer:
             notes += [f"removed sentence with numbers not in its cited passages: {s.text!r}"
                       for s in sentences if s.unsupported_numbers]  # fmt: skip
             sentences = [s for s in sentences if not s.unsupported_numbers]
+        if self.drop_unsupported_periods:
+            notes += [f"removed sentence with periods not matching its cited filings: {s.text!r}"
+                      for s in sentences if s.unsupported_periods]  # fmt: skip
+            sentences = [s for s in sentences if not s.unsupported_periods]
         if not sentences:
             return [], notes, "no sentence survived the citation check"
         return sentences, notes, None
