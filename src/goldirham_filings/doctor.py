@@ -7,6 +7,7 @@ import httpx
 import psycopg
 
 from goldirham_filings.config import ROOT, Settings
+from goldirham_filings.embed import EMBEDDING_MODELS
 from goldirham_filings.retrieve import embedding_coverage
 
 EXAMPLE_USER_AGENT = "Your Name you@example.com"
@@ -71,6 +72,13 @@ def model_check(role: str, model: str, pulled: list[str]) -> Check:
     if model_pulled(model, pulled):
         return Check(name, True, f"{model} pulled")
     return Check(name, False, f"{model} not pulled; run: ollama pull {model}")
+
+
+def embedding_model_check(model: str, pulled: list[str]) -> Check:
+    if model not in EMBEDDING_MODELS:
+        supported = ", ".join(sorted(EMBEDDING_MODELS))
+        return Check("embedding model", False, f"{model} is not supported; use one of: {supported}")
+    return model_check("embedding", model, pulled)
 
 
 def embedding_check(model: str, embedded: int, chunks: int) -> Check:
@@ -158,7 +166,7 @@ def _ollama_checks(cfg: Settings) -> list[Check]:
     return [
         Check("ollama", True, f"reachable at {cfg.ollama_url}"),
         model_check("answer", cfg.answer_model, pulled),
-        model_check("embedding", cfg.embedding_model, pulled),
+        embedding_model_check(cfg.embedding_model, pulled),
     ]
 
 

@@ -7,7 +7,7 @@ import httpx
 import numpy as np
 import psycopg
 
-from goldirham_filings.errors import ollama_error
+from goldirham_filings.errors import DependencyError, ollama_error
 
 
 @dataclass(frozen=True)
@@ -45,6 +45,11 @@ class OllamaEmbedder:
         timeout: float = 300.0,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
+        if model not in EMBEDDING_MODELS:
+            raise DependencyError(
+                f"Embedding model {model} is not supported. "
+                f"Set EMBEDDING_MODEL to one of: {', '.join(sorted(EMBEDDING_MODELS))}."
+            )
         self.model = model
         self._spec = EMBEDDING_MODELS[model]
         self._http = httpx.Client(base_url=base_url, timeout=timeout, transport=transport)

@@ -296,9 +296,13 @@ def main() -> None:
     cfg = settings()
     for warning in startup_warnings(connect, cfg.embedding_model, cfg.database_url):
         print(f"goldirham-filings: warning: {warning}", file=sys.stderr)
+    try:
+        embedder = OllamaEmbedder(cfg.embedding_model, cfg.ollama_url)
+    except DependencyError as error:
+        sys.exit(f"goldirham-filings: error: {error}")
     server = build_server(
         connect,
-        OllamaEmbedder(cfg.embedding_model, cfg.ollama_url),
+        embedder,
         OllamaChat(cfg.answer_model, cfg.ollama_url),
         cfg.abstain_min_similarity,
     )
