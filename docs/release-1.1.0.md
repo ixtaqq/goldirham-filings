@@ -1,6 +1,6 @@
 # Release 1.1.0
 
-Prepared, not shipped. Nothing here has been tagged or published.
+Tagged `v1.1.0` on 2026-11-11.
 
 ## Version
 
