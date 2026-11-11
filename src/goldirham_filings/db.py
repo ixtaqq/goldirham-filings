@@ -7,10 +7,12 @@ from goldirham_filings.config import settings
 from goldirham_filings.errors import DependencyError, database_errors
 
 
-def connect(url: str | None = None) -> psycopg.Connection[tuple[Any, ...]]:
+def connect(url: str | None = None, read_only: bool = False) -> psycopg.Connection[tuple[Any, ...]]:
     url = url or settings().database_url
     with database_errors(url):
         conn = psycopg.connect(url, connect_timeout=10)
+    if read_only:
+        conn.read_only = True
     try:
         register_vector(conn)
     except psycopg.ProgrammingError as error:

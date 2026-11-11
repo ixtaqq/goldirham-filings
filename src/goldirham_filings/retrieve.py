@@ -19,6 +19,7 @@ SearchMode = Literal["hybrid", "keyword", "vector"]
 RRF_K = 60
 # Applied only when neither the question nor the caller names filings or periods.
 RECENCY_DECAY = 0.9
+MAX_SPAN_CHARS = 20000
 
 PASSAGE_COLUMNS = """
     c.id, co.ticker, co.name, f.form, f.accession, f.period_end, f.filed_at, s.item, s.title,
@@ -325,6 +326,8 @@ def get_passage(
     elif accession is not None and section is not None and start_char is not None:
         if start_char < 0 or (end_char is not None and end_char <= start_char):
             raise ValueError("need 0 <= start_char < end_char")
+        if end_char is not None and end_char - start_char > MAX_SPAN_CHARS:
+            raise ValueError(f"a span can be at most {MAX_SPAN_CHARS} characters")
         where = (
             "f.accession = %s AND upper(s.item) = upper(%s)"
             " AND c.start_char <= %s AND c.end_char > %s"
