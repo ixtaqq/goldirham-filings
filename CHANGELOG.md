@@ -2,7 +2,7 @@
 
 Every change below is measured or explained in `docs/decisions.tsv`, with its evidence file.
 
-## 1.1.0 (not yet released)
+## 1.1.0 (2026-11-11)
 
 Run `.venv\Scripts\alembic upgrade head` after updating. Clients sending over-long inputs, or
 one accession to `compare_filings`, now get an error; see Changed.
