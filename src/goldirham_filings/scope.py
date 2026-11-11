@@ -64,8 +64,12 @@ class FilingReference:
         return bool(self.latest or self.fiscal_years or self.period_end)
 
 
-def _date(month: str, day: str, year: str) -> date:
-    return datetime.strptime(f"{month} {day} {year}", "%B %d %Y").date()
+def _date(month: str, day: str, year: str) -> date | None:
+    """None for an impossible date such as June 31."""
+    try:
+        return datetime.strptime(f"{month} {day} {year}", "%B %d %Y").date()
+    except ValueError:
+        return None
 
 
 def _count(word: str | None) -> int:
@@ -94,7 +98,7 @@ def parse_references(text: str) -> list[FilingReference]:
         )
     for match in QUARTER_ENDED.finditer(text):
         period_end = _date(*match.groups())
-        if not any(r.period_end == period_end for r in refs):
+        if period_end is not None and not any(r.period_end == period_end for r in refs):
             refs.append(FilingReference(form=None, period_end=period_end))
     if not refs and re.search(r"\b(most recent|latest) (filings?|reports?)\b", text, re.I):
         refs.append(FilingReference(form=None, latest=1))
