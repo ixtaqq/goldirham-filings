@@ -5,9 +5,11 @@ from mcp import Client
 
 from goldirham_filings.answer import OllamaChat
 from goldirham_filings.cli import main
+from goldirham_filings.config import Settings
 from goldirham_filings.embed import OllamaEmbedder
 from goldirham_filings.errors import DependencyError, database_error
 from goldirham_filings.server import build_server
+from goldirham_filings.server import main as server_main
 
 URL = "http://127.0.0.1:11434"
 
@@ -45,6 +47,25 @@ def test_ollama_failures_become_dependency_errors(handler: object, expected: str
     embedder = OllamaEmbedder("nomic-embed-text", URL, transport=transport)
     with pytest.raises(DependencyError):
         embedder.embed_query("x")
+
+
+def test_unsupported_embedding_model_names_the_supported_ones() -> None:
+    with pytest.raises(DependencyError) as raised:
+        OllamaEmbedder("all-minilm", URL)
+    assert "all-minilm" in str(raised.value)
+    assert "nomic-embed-text" in str(raised.value)
+
+
+def test_server_exits_with_the_message_on_an_unsupported_embedding_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "goldirham_filings.server.settings", lambda: Settings(embedding_model="all-minilm")
+    )
+    monkeypatch.setattr("goldirham_filings.server.startup_warnings", lambda *args: [])
+    with pytest.raises(SystemExit) as exited:
+        server_main()
+    assert "all-minilm" in str(exited.value.code)
 
 
 def test_database_errors_name_the_fix_without_the_password() -> None:

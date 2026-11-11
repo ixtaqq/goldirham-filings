@@ -2,7 +2,7 @@ import argparse
 import json
 import os
 import sys
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import date
 from pathlib import Path, PurePath
 from typing import Any
@@ -22,7 +22,13 @@ from goldirham_filings.golden import (
     select,
     validate,
 )
-from goldirham_filings.ingest import IngestReport, ingest, update
+from goldirham_filings.ingest import (
+    IngestFailure,
+    IngestReport,
+    describe_failure,
+    ingest,
+    update,
+)
 from goldirham_filings.retrieve import Filters, Retriever, latest_filings
 
 GOLDEN_PATH = ROOT / "evals" / "golden.jsonl"
@@ -53,12 +59,24 @@ def _write_report(name: str, report: dict[str, Any], split: str = "", label: str
     return path
 
 
-def cmd_ingest(args: argparse.Namespace, cfg: Settings) -> None:
-    tickers = [t.upper() for t in args.tickers] if args.tickers else cfg.ingest_ticker_list
+def _tickers(raw: list[str]) -> list[str]:
+    tickers = [t.upper() for t in raw]
     unknown = sorted(set(tickers) - set(BY_TICKER))
     if unknown:
         sys.exit(f"unknown tickers: {', '.join(unknown)}")
-    client = EdgarClient(cfg.sec_user_agent, cfg.sec_requests_per_second)
+    return tickers
+
+
+def _edgar(cfg: Settings) -> EdgarClient:
+    try:
+        return EdgarClient(cfg.sec_user_agent, cfg.sec_requests_per_second)
+    except ValueError as error:
+        sys.exit(f"error: {error}")
+
+
+def cmd_ingest(args: argparse.Namespace, cfg: Settings) -> None:
+    tickers = _tickers(args.tickers or cfg.ingest_ticker_list)
+    client = _edgar(cfg)
     with connect() as conn:
         report = ingest(conn, client, cfg.data_dir, [BY_TICKER[t] for t in tickers],
                         {"10-K": args.ten_k, "10-Q": args.ten_q})  # fmt: skip
@@ -70,51 +88,60 @@ def _exit_on_failures(report: IngestReport) -> None:
     if report.failures:
         for f in report.failures:
             print(f"  {f.ticker} {f.accession or '(filing list)'}: {f.error}")
-        sys.exit(f"{len(report.failures)} filings or filing lists failed; rerun to retry them")
+        sys.exit(f"{len(report.failures)} fetches or parses failed; rerun to retry them")
 
 
 def cmd_update(args: argparse.Namespace, cfg: Settings) -> None:
     """Index filings newer than the newest one indexed per company, then embed new chunks."""
-    unknown = sorted(set(args.tickers or []) - set(BY_TICKER))
-    if unknown:
-        sys.exit(f"unknown tickers: {', '.join(unknown)}")
-    client = EdgarClient(cfg.sec_user_agent, cfg.sec_requests_per_second)
+    tickers = _tickers(args.tickers or [])
+    client = _edgar(cfg)
     with connect() as conn:
-        if args.tickers:
-            companies = [BY_TICKER[t] for t in args.tickers]
+        if tickers:
+            companies = [BY_TICKER[t] for t in tickers]
         else:
             indexed = {r[0] for r in conn.execute("SELECT DISTINCT cik FROM filings").fetchall()}
             companies = [c for c in TRACKED_COMPANIES if c.cik_int in indexed]
         report = update(conn, client, cfg.data_dir, companies)
         embedder = OllamaEmbedder(cfg.embedding_model, cfg.ollama_url)
         print(f"embedded {embed_missing(conn, embedder)} new chunks with {embedder.model}")
-        _load_facts(conn, client, companies)
-    _exit_on_failures(report)
+        facts_failures = _load_facts(conn, client, companies)
+    _exit_on_failures(replace(report, failures=[*report.failures, *facts_failures]))
 
 
-def _load_facts(conn: Any, client: EdgarClient, companies: list[Any]) -> None:
+def _load_facts(conn: Any, client: EdgarClient, companies: list[Any]) -> list[IngestFailure]:
+    """A company whose facts can't be fetched or parsed is reported and skipped; losing the
+    database still ends the run."""
     from goldirham_filings.xbrl import fetch_company_facts, parse_company_facts, store_facts
 
+    failures: list[IngestFailure] = []
     for company in companies:
         if company.filer_type != "domestic":
             continue
-        facts = parse_company_facts(company.cik_int, fetch_company_facts(client, company.cik_int))
+        try:
+            raw = fetch_company_facts(client, company.cik_int)
+            facts = parse_company_facts(company.cik_int, raw)
+        except Exception as error:
+            failures.append(IngestFailure(company.ticker, "(company facts)",
+                                          describe_failure(error)))  # fmt: skip
+            print(f"FAILED   {company.ticker:5} company facts: {failures[-1].error}")
+            continue
         print(f"facts    {company.ticker:5} {store_facts(conn, company.cik_int, facts)}")
+    return failures
 
 
 def cmd_facts(args: argparse.Namespace, cfg: Settings) -> None:
     """Load XBRL company facts for the given or already-indexed companies."""
-    unknown = sorted(set(args.tickers or []) - set(BY_TICKER))
-    if unknown:
-        sys.exit(f"unknown tickers: {', '.join(unknown)}")
-    client = EdgarClient(cfg.sec_user_agent, cfg.sec_requests_per_second)
+    tickers = _tickers(args.tickers or [])
+    client = _edgar(cfg)
     with connect() as conn:
-        if args.tickers:
-            companies = [BY_TICKER[t] for t in args.tickers]
+        if tickers:
+            companies = [BY_TICKER[t] for t in tickers]
         else:
             indexed = {r[0] for r in conn.execute("SELECT DISTINCT cik FROM filings").fetchall()}
             companies = [c for c in TRACKED_COMPANIES if c.cik_int in indexed]
-        _load_facts(conn, client, companies)
+        failures = _load_facts(conn, client, companies)
+    if failures:
+        sys.exit(f"company facts failed for {len(failures)} companies; rerun to retry them")
 
 
 def cmd_embed(args: argparse.Namespace, cfg: Settings) -> None:

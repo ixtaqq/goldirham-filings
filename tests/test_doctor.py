@@ -2,6 +2,7 @@ from goldirham_filings.doctor import (
     EXAMPLE_USER_AGENT,
     Check,
     embedding_check,
+    embedding_model_check,
     format_report,
     migration_check,
     model_check,
@@ -34,6 +35,14 @@ def test_untagged_model_matches_latest_tag_only() -> None:
     assert not model_pulled("qwen3", pulled)
     missing = model_check("answer", "qwen3:14b", pulled)
     assert not missing.ok and "ollama pull qwen3:14b" in missing.detail
+
+
+def test_embedding_model_must_be_supported_and_pulled() -> None:
+    assert embedding_model_check("nomic-embed-text", ["nomic-embed-text:latest"]).ok
+    assert not embedding_model_check("nomic-embed-text", []).ok
+    unsupported = embedding_model_check("all-minilm", ["all-minilm:latest"])
+    assert not unsupported.ok
+    assert "all-minilm" in unsupported.detail and "nomic-embed-text" in unsupported.detail
 
 
 def test_embeddings_pass_only_when_every_chunk_has_a_vector() -> None:
