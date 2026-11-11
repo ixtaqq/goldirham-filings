@@ -79,6 +79,25 @@ def supporting_spans(item: GoldItem, unchecked: bool = False) -> list[GoldSpan]:
             *(a for a in item.alternate_spans if unchecked or a.checked_by)]  # fmt: skip
 
 
+def mark_alternates(
+    items: list[GoldItem], refs: list[tuple[str, int]], by: str, on: date
+) -> list[GoldItem]:
+    """Record a person's review of alternate spans, named as (item id, index in the item)."""
+    by_id = {i.id: i for i in items}
+    for item_id, index in refs:
+        if item_id not in by_id or not 0 <= index < len(by_id[item_id].alternate_spans):
+            raise ValueError(f"no alternate span {index} on {item_id}")
+    wanted = set(refs)
+    return [
+        item.model_copy(update={"alternate_spans": [
+            a.model_copy(update={"checked_by": by, "checked_at": on})
+            if (item.id, n) in wanted else a
+            for n, a in enumerate(item.alternate_spans)
+        ]})
+        for item in items
+    ]  # fmt: skip
+
+
 def _section_text(
     conn: psycopg.Connection[tuple[Any, ...]], accession: str, section: str
 ) -> str | None:

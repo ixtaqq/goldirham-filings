@@ -6,6 +6,7 @@ Answers: citation precision, numbers missing from cited passages, abstention acc
 false abstention, plus answer agreement from a local model judge (indicative only).
 """
 
+import re
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from statistics import mean
@@ -13,7 +14,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-from goldirham_filings.answer import Answerer, AnswerResult, Chat
+from goldirham_filings.answer import Answerer, AnswerResult, Chat, dates_named, period_names
 from goldirham_filings.golden import GoldItem, GoldSpan, supporting_spans
 from goldirham_filings.retrieve import Passage, Retriever
 
@@ -155,13 +156,63 @@ class AnswerScore:
     gold_in_passages: bool
     cited: list[str]
     notes: list[str]
+    dated_decline: bool = False
+
+
+NOT_REPORTED = re.compile(
+    r"(?:\bnot\b|n't\b)[^.]*\b(?:report|disclos|provid|stat|specif|includ|availab)\w*", re.I
+)
+
+
+def _periods_named(text: str) -> set[object]:
+    return {d for _, d in dates_named(text)} | {(n.year, n.quarter) for n in period_names(text)}
+
+
+def dated_decline(question: str, sentences: Sequence[str]) -> bool:
+    """The answer says the asked-for value isn't reported, and every other sentence gives a
+    figure dated to some other period. Pure: the rule half of the grade."""
+    asked = _periods_named(question)
+    if not asked:
+        return False
+    declined = False
+    for sentence in sentences:
+        if NOT_REPORTED.search(sentence):
+            declined = True
+            continue
+        named = _periods_named(sentence)
+        if not named or named & asked:
+            return False
+    return declined
+
+
+class DatedDeclineVerdict(BaseModel):
+    passes: bool
+
+
+DATED_DECLINE_PROMPT = """A question asks for a figure at a period the filings do not report.
+Set "passes" to true only if the candidate answer says that figure is not reported and does
+not present any other period's figure as the one asked for."""
+
+
+def grade_dated_decline(chat: Chat, item: GoldItem, result: AnswerResult) -> bool:
+    """The rule first; the judge confirms only what the rule passes."""
+    if item.answerable or result.status != "answered":
+        return False
+    texts = [s.text for s in result.sentences]
+    if not dated_decline(item.question, texts):
+        return False
+    prompt = f"Question: {item.question}\nCandidate: {' '.join(texts)}"
+    raw = chat.complete_json(DATED_DECLINE_PROMPT, prompt, DatedDeclineVerdict.model_json_schema())
+    return DatedDeclineVerdict.model_validate_json(raw).passes
 
 
 def _where(p: Passage) -> str:
     return f"{p.accession} {p.section} {p.start_char}-{p.end_char}"
 
 
-def score_answer(item: GoldItem, result: AnswerResult, verdict: Verdict) -> AnswerScore:
+def score_answer(
+    item: GoldItem, result: AnswerResult, verdict: Verdict, dated: bool = False
+) -> AnswerScore:
     abstained = result.status == "abstained"
     cited = sorted({c for s in result.sentences for c in s.citations})
 
@@ -186,6 +237,7 @@ def score_answer(item: GoldItem, result: AnswerResult, verdict: Verdict) -> Answ
         gold_in_passages=any(span_hit(p, s) for p in result.passages for s in item.gold_spans),
         cited=[_where(result.passages[c - 1]) for c in cited],
         notes=result.notes,
+        dated_decline=dated,
     )
 
 
@@ -217,6 +269,11 @@ def summarize_answers(scores: Sequence[AnswerScore]) -> dict[str, Any]:
         "abstention_accuracy": (
             round(mean(s.abstained for s in unanswerable), 4) if unanswerable else None
         ),
+        "abstention_accuracy_with_dated_declines": (
+            round(mean(s.abstained or s.dated_decline for s in unanswerable), 4)
+            if unanswerable
+            else None
+        ),
         "false_abstention_rate": (
             round(mean(s.abstained for s in answerable), 4) if answerable else None
         ),
@@ -244,7 +301,8 @@ def run_answers(
             verdict = judge(judge_chat, item, " ".join(s.text for s in result.sentences))
         elif item.answerable:
             verdict = "incorrect"
-        scores.append(score_answer(item, result, verdict))
+        dated = grade_dated_decline(judge_chat, item, result)
+        scores.append(score_answer(item, result, verdict, dated))
         print(f"{item.id}: {result.status} {verdict}")
     return scores
 
