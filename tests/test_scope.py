@@ -12,6 +12,13 @@ from goldirham_filings.scope import (
 )
 
 
+def test_impossible_dates_name_no_period() -> None:
+    assert parse_references("What was revenue for the quarter ended June 31, 2026?") == []
+    assert parse_references("In the 10-Q for the quarter ended February 30, 2026?") == [
+        FilingReference(form="10-Q")
+    ]
+
+
 def test_most_recent_form() -> None:
     assert parse_references("Does NVIDIA's most recent 10-Q mention SB Energy?") == [
         FilingReference(form="10-Q", latest=1)

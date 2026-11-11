@@ -1,5 +1,6 @@
 """Polite EDGAR client: real contact in User-Agent, rate limit, timeouts, bounded retries."""
 
+import re
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -12,6 +13,8 @@ import httpx
 Form = Literal["10-K", "10-Q"]
 FORMS: tuple[Form, ...] = ("10-K", "10-Q")
 RETRY_STATUSES = {429, 500, 502, 503, 504}
+# An accession becomes a file name and a URL segment, so it must be one path component.
+SAFE_ACCESSION = re.compile(r"[\w-]+")
 
 
 @dataclass(frozen=True)
@@ -120,9 +123,12 @@ def parse_submission_page(cik: int, page: dict[str, list[str]]) -> Iterator[Fili
     for i, form in enumerate(page["form"]):
         if form not in FORMS:
             continue
+        accession = page["accessionNumber"][i]
+        if not SAFE_ACCESSION.fullmatch(accession):
+            raise ValueError(f"unexpected accession in EDGAR response: {accession!r}")
         report_date = page["reportDate"][i]
         yield FilingRef(
-            accession=page["accessionNumber"][i],
+            accession=accession,
             cik=cik,
             form=form,
             filed_at=date.fromisoformat(page["filingDate"][i]),

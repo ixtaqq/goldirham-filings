@@ -72,6 +72,21 @@ def test_submission_page_keeps_10k_and_10q_only_and_builds_document_url() -> Non
     )
 
 
+@pytest.mark.parametrize("accession", ["../../../x", "a/b", "a\\b", ".."])
+def test_submission_page_refuses_an_accession_that_is_not_one_path_component(
+    accession: str,
+) -> None:
+    page = {
+        "form": ["10-K"],
+        "accessionNumber": [accession],
+        "filingDate": ["2026-02-25"],
+        "reportDate": [""],
+        "primaryDocument": ["a.htm"],
+    }
+    with pytest.raises(ValueError, match="accession"):
+        list(parse_submission_page(1045810, page))
+
+
 def test_filings_since_stops_at_the_first_older_filing_without_reading_older_pages() -> None:
     recent = {
         "form": ["10-Q", "8-K", "10-Q", "10-K"],
