@@ -1,0 +1,67 @@
+{
+  "items": 6,
+  "whole_question": {
+    "recall_at_10": 0.4167,
+    "mrr": 0.1944
+  },
+  "per_side_topic": {
+    "recall_at_10": 0.8333,
+    "mrr": 0.4778
+  },
+  "rows": [
+    {
+      "id": "comparison-001",
+      "topic": "Applied Materials' disclosure of the government export-controls inquiry",
+      "parts": 2,
+      "whole_recall_at_10": 0.5,
+      "whole_rr": 0.16666666666666666,
+      "side_recall_at_10": 1.0,
+      "side_rr": 0.5
+    },
+    {
+      "id": "comparison-002",
+      "topic": "AMD's description of its multi-gigawatt GPU deployment agreements",
+      "parts": 2,
+      "whole_recall_at_10": 0.5,
+      "whole_rr": 0.5,
+      "side_recall_at_10": 1.0,
+      "side_rr": 1.0
+    },
+    {
+      "id": "comparison-003",
+      "topic": "the amount remaining under Applied Materials' stock repurchase program",
+      "parts": 2,
+      "whole_recall_at_10": 0.5,
+      "whole_rr": 0.16666666666666666,
+      "side_recall_at_10": 1.0,
+      "side_rr": 0.16666666666666666
+    },
+    {
+      "id": "comparison-004",
+      "topic": "NVIDIA's reported headcount in Israel",
+      "parts": 2,
+      "whole_recall_at_10": 0.0,
+      "whole_rr": 0.0,
+      "side_recall_at_10": 0.0,
+      "side_rr": 0.0
+    },
+    {
+      "id": "comparison-005",
+      "topic": "Micron's customer-concentration risk factor",
+      "parts": 2,
+      "whole_recall_at_10": 0.0,
+      "whole_rr": 0.0,
+      "side_recall_at_10": 1.0,
+      "side_rr": 0.2
+    },
+    {
+      "id": "comparison-006",
+      "topic": "Micron's fiscal 2026 capital expenditure estimate",
+      "parts": 2,
+      "whole_recall_at_10": 1.0,
+      "whole_rr": 0.3333333333333333,
+      "side_recall_at_10": 1.0,
+      "side_rr": 1.0
+    }
+  ]
+}

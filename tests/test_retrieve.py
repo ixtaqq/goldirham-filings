@@ -1,16 +1,63 @@
+from typing import Any
 from unittest.mock import create_autospec
 
+import numpy as np
 import psycopg
 import pytest
 
+from goldirham_filings.fixtures import FixtureEmbedder
 from goldirham_filings.retrieve import (
     Filters,
+    Retriever,
     balance_groups,
+    comparison_topic,
     embedding_note,
     get_passage,
     interleave,
     prefer_recent,
 )
+
+
+def test_comparison_topic_is_the_subject_of_the_change() -> None:
+    question = "How did Micron's capex estimate change between its 10-Q and its 10-K?"
+    assert comparison_topic(question) == "Micron's capex estimate"
+
+
+def test_other_questions_have_no_comparison_topic() -> None:
+    assert comparison_topic("What was Micron's capex?") is None
+
+
+class RecordingEmbedder(FixtureEmbedder):
+    def __init__(self) -> None:
+        super().__init__()
+        self.queries: list[str] = []
+
+    def embed_query(self, text: str) -> np.ndarray:
+        self.queries.append(text)
+        return next(iter(self._vectors.values()))
+
+
+COMPARISON = "How did Microsoft's risk factors change between its fiscal 2025 and fiscal 2026 10-K?"
+TWO_FILINGS = Filters(accessions=["0000950170-25-100235", "0001193125-26-323660"])
+
+
+@pytest.mark.db
+def test_named_filings_are_searched_by_topic_when_asked(
+    fixture_conn: psycopg.Connection[tuple[Any, ...]],
+) -> None:
+    embedder = RecordingEmbedder()
+    retriever = Retriever(fixture_conn, embedder, comparison_topics=True)
+    retriever.search(COMPARISON, TWO_FILINGS, k=3)
+    assert embedder.queries == ["Microsoft's risk factors"]
+
+
+@pytest.mark.db
+def test_the_whole_question_is_searched_by_default(
+    fixture_conn: psycopg.Connection[tuple[Any, ...]],
+) -> None:
+    embedder = RecordingEmbedder()
+    Retriever(fixture_conn, embedder).search(COMPARISON, TWO_FILINGS, k=3)
+    assert embedder.queries == [COMPARISON]
 
 
 def test_get_passage_refuses_an_oversized_span_before_querying() -> None:

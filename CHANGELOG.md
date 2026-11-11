@@ -8,16 +8,21 @@ Run `.venv\Scripts\alembic upgrade head` after updating. Clients sending over-lo
 one accession to `compare_filings`, now get an error; see Changed.
 
 ### Added
+- `COMPARISON_TOPIC_QUERIES` searches each side of a comparison by its topic. On the dev set,
+  comparison Recall@10 rose from 0.417 to 0.833 and overall from 0.742 to 0.802; citation
+  precision fell from 0.662 to 0.657. Off by default.
 - `DROP_UNSUPPORTED_PERIODS` removes sentences naming a period that matches neither the cited
-  filing nor its text. Off by default until unanswerable accuracy is measured on the dev index.
+  filing nor its text. Off by default: it never fired on the dev set.
 - `CHECK_FACT_DURATIONS` flags a dollar amount the cited filing reports only for other
-  durations, such as a nine-month figure quoted as the quarter's. Off by default.
+  durations, such as a nine-month figure quoted as the quarter's. Off by default: it never
+  fired on the dev set.
 - `abstention_accuracy_with_dated_declines` also credits answers that say the value isn't
   reported and give only other periods' figures. `abstention_accuracy` is unchanged.
 - `scripts/mark_checked.py --alternates` records a review of single alternate spans.
 - 20-F support behind `INGEST_FOREIGN_FILERS`, off by default: migration 0005, `F-` item ids
-  and the `20-F` form in the tool schemas. It has only run on synthetic text, and XBRL facts
-  for these filers aren't loaded.
+  and the `20-F` form in the tool schemas. Read against the latest filings of all three
+  companies; ASML's has no Item headings and indexes as one section. XBRL facts load from
+  `us-gaap` and `ifrs-full`.
 
 ### Changed
 - MCP tool inputs have limits, shown in their schemas: 2000 characters for `query`, `question`

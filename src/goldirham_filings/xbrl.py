@@ -23,14 +23,14 @@ from pydantic import BaseModel, Field
 from goldirham_filings.edgar import FORMS, EdgarClient
 from goldirham_filings.scope import PERIOD_END_TOLERANCE_DAYS
 
-TAXONOMIES = ("us-gaap", "dei")
+TAXONOMIES = ("us-gaap", "ifrs-full", "dei")
 FiscalPeriod = Literal["FY", "Q1", "Q2", "Q3"]
 # Plain names for the concepts questions ask about most; the first one a company uses wins.
 ALIASES: dict[str, tuple[str, ...]] = {
     "revenue": (
         "Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet"
     ),
-    "net income": ("NetIncomeLoss",),
+    "net income": ("NetIncomeLoss", "ProfitLoss"),
     "gross profit": ("GrossProfit",),
     "operating income": ("OperatingIncomeLoss",),
     "research and development": ("ResearchAndDevelopmentExpense",),

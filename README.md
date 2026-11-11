@@ -119,8 +119,9 @@ embedding and 180 MB (`docs/decisions.tsv`, phase 3).
 ## Limitations
 
 - **TSM, ASML and ARM aren't covered by default.** They file 20-F and 6-K reports.
-  `INGEST_FOREIGN_FILERS=true` indexes their 20-Fs, but that parser has only run on synthetic
-  text, their XBRL facts aren't loaded and 6-Ks aren't indexed.
+  `INGEST_FOREIGN_FILERS=true` indexes their 20-Fs and XBRL facts. No evaluation questions
+  cover them yet, ASML's filing has no Item headings, TSM's facts stop at 2024 in EDGAR, and
+  6-Ks aren't indexed.
 - **Some filings have no sections.** Intel's 10-Ks, and IBM, Eaton and Digital Realty filings
   if you add them, are searched as whole documents because their text has no Item headings.
   Section filters still include them.

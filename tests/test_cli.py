@@ -94,6 +94,18 @@ def test_one_companys_facts_failure_does_not_stop_the_others(
     assert "FAILED   AMD" in capsys.readouterr().out
 
 
+def test_foreign_facts_load_only_when_enabled(
+    stored_facts: list[int], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    main(["facts", "--tickers", "TSM"])
+    assert stored_facts == []
+    monkeypatch.setattr(
+        "goldirham_filings.cli.settings", lambda: Settings(ingest_foreign_filers=True)
+    )
+    main(["facts", "--tickers", "TSM"])
+    assert stored_facts == [BY_TICKER["TSM"].cik_int]
+
+
 def test_update_prints_its_summary_when_facts_fail(
     stored_facts: list[int],
     monkeypatch: pytest.MonkeyPatch,

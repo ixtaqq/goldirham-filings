@@ -127,6 +127,16 @@ def keyword_tsquery(text: str) -> str | None:
     return " | ".join(dict.fromkeys(words)) or None
 
 
+COMPARISON_QUESTION = re.compile(r"^How did (.+?) change between ", re.I)
+
+
+def comparison_topic(question: str) -> str | None:
+    """What a comparison question is about, without the wording that names the filings. The
+    filing names pull each side's search toward passages that merely mention the period."""
+    match = COMPARISON_QUESTION.match(question)
+    return match[1] if match else None
+
+
 def _where(filters: Filters) -> tuple[str, list[Any]]:
     clauses: list[str] = []
     params: list[Any] = []
@@ -160,6 +170,7 @@ class Retriever:
         mode: SearchMode = "hybrid",
         scope_from_query: bool = True,
         recency_decay: float = RECENCY_DECAY,
+        comparison_topics: bool = False,
     ) -> None:
         self.conn = conn
         self.embedder = embedder
@@ -167,6 +178,7 @@ class Retriever:
         self.mode = mode
         self.scope_from_query = scope_from_query
         self.recency_decay = recency_decay
+        self.comparison_topics = comparison_topics
 
     def scoped(self, query: str, filters: Filters) -> Filters | None:
         """Restrict to the filings the query names ("most recent 10-Q", "fiscal 2025 10-K")
@@ -273,11 +285,14 @@ class Retriever:
         scoped = self.scoped(query, filters or Filters())
         if scoped is None:
             return []
-        vector = self.embedder.embed_query(query) if self.mode != "keyword" else None
+        text = query
+        if self.comparison_topics and scoped.accessions:
+            text = comparison_topic(query) or query
+        vector = self.embedder.embed_query(text) if self.mode != "keyword" else None
         similarities: dict[int, float] = {}
         rankings = []
         for group in balance_groups(scoped):
-            ids, sims = self._fused(query, vector, group)
+            ids, sims = self._fused(text, vector, group)
             rankings.append(ids)
             similarities |= sims
         ids = interleave(rankings)

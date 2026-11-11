@@ -157,6 +157,7 @@ class AnswerScore:
     cited: list[str]
     notes: list[str]
     dated_decline: bool = False
+    unsupported_durations: int = 0
 
 
 NOT_REPORTED = re.compile(
@@ -238,6 +239,7 @@ def score_answer(
         cited=[_where(result.passages[c - 1]) for c in cited],
         notes=result.notes,
         dated_decline=dated,
+        unsupported_durations=sum(len(s.unsupported_durations) for s in result.sentences),
     )
 
 
@@ -266,6 +268,7 @@ def summarize_answers(scores: Sequence[AnswerScore]) -> dict[str, Any]:
         ),
         "answers_with_unsupported_numbers": sum(s.unsupported_numbers > 0 for s in scores),
         "answers_with_unsupported_periods": sum(s.unsupported_periods > 0 for s in scores),
+        "answers_with_unsupported_durations": sum(s.unsupported_durations > 0 for s in scores),
         "abstention_accuracy": (
             round(mean(s.abstained for s in unanswerable), 4) if unanswerable else None
         ),

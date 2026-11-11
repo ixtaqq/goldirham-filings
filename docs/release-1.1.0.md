@@ -50,12 +50,11 @@ Nothing in this release is irreversible. The tag can be deleted until someone de
 
 ## Before turning on the off-by-default settings
 
-| Setting | Needs first |
-| --- | --- |
-| `DROP_UNSUPPORTED_PERIODS` | Unanswerable accuracy and false declines on the dev index |
-| `CHECK_FACT_DURATIONS` | A dev eval with real XBRL facts loaded |
-| `INGEST_FOREIGN_FILERS` | One real 20-F parsed and read against its filing |
+| Setting | Dev result | Needs first |
+| --- | --- | --- |
+| `DROP_UNSUPPORTED_PERIODS` | Never fired on 48 items | A set with period-trap questions |
+| `CHECK_FACT_DURATIONS` | Never fired on 48 items | The same |
+| `COMPARISON_TOPIC_QUERIES` | Recall@10 0.742 to 0.802; precision 0.662 to 0.657 | Re-exported fixtures and a reviewed baseline: the CI gate has no vectors for topics |
+| `INGEST_FOREIGN_FILERS` | Parser read against 3 real filings | Golden questions for those filers |
 
-The dev index needs `SEC_USER_AGENT` in `.env`, `ollama pull nomic-embed-text`, and
-`filings ingest`, `filings embed`, `filings facts`. `scripts\mcp_smoke.py` and
-`scripts\eval.ps1` run against it.
+The new held-out set (`docs/v1.1-plan.md`, item 5) is the place to measure these.
