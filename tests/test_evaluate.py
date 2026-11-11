@@ -106,6 +106,16 @@ def test_the_judge_confirms_only_what_the_rule_passes() -> None:
     assert (agrees.calls, disagrees.calls, unused.calls) == (1, 1, 0)
 
 
+def test_answers_with_wrong_durations_are_counted() -> None:
+    flagged = answered(DATED)
+    flagged.sentences[0].unsupported_durations = ["$9,000 million"]
+    scores = [
+        score_answer(UNANSWERABLE, flagged, "not_applicable"),
+        score_answer(UNANSWERABLE, answered(DATED), "not_applicable"),
+    ]
+    assert summarize_answers(scores)["answers_with_unsupported_durations"] == 1
+
+
 def test_dated_declines_have_their_own_metric() -> None:
     plain = score_answer(UNANSWERABLE, answered(DATED), "not_applicable")
     graded = score_answer(UNANSWERABLE, answered(NOT_REPORTED, DATED), "not_applicable", True)

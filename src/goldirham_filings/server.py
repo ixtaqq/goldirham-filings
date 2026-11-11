@@ -169,6 +169,7 @@ def build_server(
     min_similarity: float = 0.0,
     drop_unsupported_periods: bool = False,
     check_fact_durations: bool = False,
+    comparison_topics: bool = False,
 ) -> MCPServer:
     mcp = MCPServer("goldirham-filings", instructions=INSTRUCTIONS)
 
@@ -190,7 +191,8 @@ def build_server(
         filters = Filters(tickers=tickers, forms=forms, period_from=period_from,
                           period_to=period_to, sections=sections)  # fmt: skip
         with clear_errors(), open_conn() as conn:
-            passages = Retriever(conn, embedder).search(query, filters, k)
+            retriever = Retriever(conn, embedder, comparison_topics=comparison_topics)
+            passages = retriever.search(query, filters, k)
             note = embedding_note(embedder.model, *embedding_coverage(conn, embedder.model))
         return SearchResult(passages=passages, notes=[note] if note else [])
 
@@ -232,7 +234,7 @@ def build_server(
                           period_to=period_to)  # fmt: skip
         with clear_errors(), open_conn() as conn:
             answerer = Answerer(
-                Retriever(conn, embedder),
+                Retriever(conn, embedder, comparison_topics=comparison_topics),
                 chat,
                 min_similarity=min_similarity,
                 drop_unsupported_periods=drop_unsupported_periods,
@@ -405,6 +407,7 @@ def main() -> None:
         cfg.abstain_min_similarity,
         cfg.drop_unsupported_periods,
         cfg.check_fact_durations,
+        cfg.comparison_topic_queries,
     )
     server.run()
 

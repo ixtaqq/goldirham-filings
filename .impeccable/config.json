@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "site/index.html"
+        ],
+        "createdAt": "2026-11-11T06:44:59.039Z",
+        "reason": "agent verified: .decline is a full-bleed band; its .wrap child insets text 16px (width: min(1160px, 100% - 32px)), measured at 375px"
+      }
+    ]
+  }
+}

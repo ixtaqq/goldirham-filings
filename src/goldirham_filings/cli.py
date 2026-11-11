@@ -4,6 +4,7 @@ import os
 import sys
 from dataclasses import asdict, replace
 from datetime import date
+from functools import partial
 from pathlib import Path, PurePath
 from typing import Any
 
@@ -106,18 +107,20 @@ def cmd_update(args: argparse.Namespace, cfg: Settings) -> None:
                         include_foreign=cfg.ingest_foreign_filers)  # fmt: skip
         embedder = OllamaEmbedder(cfg.embedding_model, cfg.ollama_url)
         print(f"embedded {embed_missing(conn, embedder)} new chunks with {embedder.model}")
-        facts_failures = _load_facts(conn, client, companies)
+        facts_failures = _load_facts(conn, client, companies, cfg.ingest_foreign_filers)
     _exit_on_failures(replace(report, failures=[*report.failures, *facts_failures]))
 
 
-def _load_facts(conn: Any, client: EdgarClient, companies: list[Any]) -> list[IngestFailure]:
+def _load_facts(
+    conn: Any, client: EdgarClient, companies: list[Any], include_foreign: bool
+) -> list[IngestFailure]:
     """A company whose facts can't be fetched or parsed is reported and skipped; losing the
     database still ends the run."""
     from goldirham_filings.xbrl import fetch_company_facts, parse_company_facts, store_facts
 
     failures: list[IngestFailure] = []
     for company in companies:
-        if company.filer_type != "domestic":
+        if company.filer_type != "domestic" and not include_foreign:
             continue
         try:
             raw = fetch_company_facts(client, company.cik_int)
@@ -141,7 +144,7 @@ def cmd_facts(args: argparse.Namespace, cfg: Settings) -> None:
         else:
             indexed = {r[0] for r in conn.execute("SELECT DISTINCT cik FROM filings").fetchall()}
             companies = [c for c in TRACKED_COMPANIES if c.cik_int in indexed]
-        failures = _load_facts(conn, client, companies)
+        failures = _load_facts(conn, client, companies, cfg.ingest_foreign_filers)
     if failures:
         sys.exit(f"company facts failed for {len(failures)} companies; rerun to retry them")
 
@@ -159,6 +162,12 @@ def cmd_search(args: argparse.Namespace, cfg: Settings) -> None:
     _print_json([p.model_dump(mode="json") for p in passages])
 
 
+def _fact_source(conn: Any, cfg: Settings) -> Any:
+    from goldirham_filings.server import cited_facts
+
+    return partial(cited_facts, conn) if cfg.check_fact_durations else None
+
+
 def cmd_answer(args: argparse.Namespace, cfg: Settings) -> None:
     from goldirham_filings.answer import Answerer, OllamaChat
 
@@ -166,7 +175,8 @@ def cmd_answer(args: argparse.Namespace, cfg: Settings) -> None:
         retriever = Retriever(conn, OllamaEmbedder(cfg.embedding_model, cfg.ollama_url))
         answerer = Answerer(retriever, OllamaChat(cfg.answer_model, cfg.ollama_url),
                             min_similarity=cfg.abstain_min_similarity,
-                            drop_unsupported_periods=cfg.drop_unsupported_periods)  # fmt: skip
+                            drop_unsupported_periods=cfg.drop_unsupported_periods,
+                            facts=_fact_source(conn, cfg))  # fmt: skip
         result = answerer.answer(args.question, Filters(tickers=args.tickers))
     _print_json(result.model_dump(mode="json"))
 
@@ -212,7 +222,8 @@ def cmd_eval_retrieval(args: argparse.Namespace, cfg: Settings) -> None:
     with connect() as conn:
         for model in args.models or [cfg.embedding_model]:
             for mode in args.modes:
-                retriever = Retriever(conn, OllamaEmbedder(model, cfg.ollama_url), mode=mode)
+                retriever = Retriever(conn, OllamaEmbedder(model, cfg.ollama_url), mode=mode,
+                                      comparison_topics=cfg.comparison_topic_queries)  # fmt: skip
                 scores = run_retrieval(retriever, items)
                 summary = summarize_retrieval(scores)
                 negatives = run_retrieval(retriever, unanswerable) if mode != "keyword" else []
@@ -238,9 +249,11 @@ def cmd_eval_full(args: argparse.Namespace, cfg: Settings) -> None:
     items = _split_items(args)
     chat = OllamaChat(cfg.answer_model, cfg.ollama_url)
     with connect() as conn:
-        retriever = Retriever(conn, OllamaEmbedder(cfg.embedding_model, cfg.ollama_url))
+        retriever = Retriever(conn, OllamaEmbedder(cfg.embedding_model, cfg.ollama_url),
+                              comparison_topics=cfg.comparison_topic_queries)  # fmt: skip
         answerer = Answerer(retriever, chat, min_similarity=cfg.abstain_min_similarity,
-                            drop_unsupported_periods=cfg.drop_unsupported_periods)  # fmt: skip
+                            drop_unsupported_periods=cfg.drop_unsupported_periods,
+                            facts=_fact_source(conn, cfg))  # fmt: skip
         retrieval = run_retrieval(retriever, [i for i in items if i.answerable])
         # The abstention signal is the best similarity among the passages the answerer sees.
         positives = run_retrieval(retriever, [i for i in items if i.answerable], k=answerer.k)
@@ -254,7 +267,9 @@ def cmd_eval_full(args: argparse.Namespace, cfg: Settings) -> None:
         "config": {"embedding_model": cfg.embedding_model, "answer_model": cfg.answer_model,
                    "abstain_min_similarity": cfg.abstain_min_similarity, "k": answerer.k,
                    "drop_unsupported_numbers": answerer.drop_unsupported_numbers,
-                   "drop_unsupported_periods": answerer.drop_unsupported_periods},
+                   "drop_unsupported_periods": answerer.drop_unsupported_periods,
+                   "check_fact_durations": cfg.check_fact_durations,
+                   "comparison_topic_queries": cfg.comparison_topic_queries},
         "golden": {"path": str(args.golden), "split": args.split, "label": args.label,
                    "items": len(items),
                    "human_checked": sum(i.checked_by is not None for i in items)},

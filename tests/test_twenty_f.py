@@ -1,6 +1,7 @@
 """20-F filers: the form flows through parsing, scoping, checks, facts and the tool schemas.
 
-The filing below is synthetic; no real 20-F has been parsed yet.
+The filing below is synthetic. The parser was also read against the latest real 20-Fs of
+TSM, ASML and ARM; see docs/decisions.tsv.
 """
 
 import json
@@ -116,6 +117,16 @@ def test_a_fiscal_year_resolves_through_the_20f() -> None:
     ]}}}}}  # fmt: skip
     found = lookup(parse_company_facts(1, data), "TSM", "Revenues", 2025, "FY")
     assert [f.value for f in found.facts] == [100.0]
+
+
+def test_ifrs_facts_load_and_resolve_by_plain_name() -> None:
+    # TSMC reports under ifrs-full; ASML and Arm report under us-gaap.
+    data = {"facts": {"ifrs-full": {"Revenue": {"label": "Revenue", "units": {"TWD": [
+        {"start": "2025-01-01", "end": "2025-12-31", "val": 500, "accn": "A", "fy": 2025,
+         "fp": "FY", "form": "20-F", "filed": "2026-04-16"},
+    ]}}}}}  # fmt: skip
+    found = lookup(parse_company_facts(1, data), "TSM", "revenue", 2025, "FY")
+    assert (found.concept, found.facts[0].unit, found.facts[0].value) == ("Revenue", "TWD", 500.0)
 
 
 @pytest.mark.anyio
