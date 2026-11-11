@@ -1,4 +1,5 @@
-# Runs what CI runs: lint, type check, tests, and the retrieval gate on the fixture corpus.
+# Runs what CI runs: dependency audit, lint, type check, tests, and the retrieval gate on the
+# fixture corpus.
 # Uses a scratch database, filings_test, in the dev Postgres container (docker compose up -d).
 # The scratch database is dropped and recreated on every run; the dev database is untouched.
 $ErrorActionPreference = 'Stop'
@@ -12,6 +13,9 @@ function Invoke-Step([string]$name, [scriptblock]$step) {
 }
 
 Invoke-Step 'sync' { python -m uv sync --frozen }
+$requirements = Join-Path $env:TEMP 'goldirham-requirements.txt'
+Invoke-Step 'export lockfile' { python -m uv export --frozen --no-emit-project --all-groups --format requirements-txt -o $requirements }
+Invoke-Step 'dependency audit' { python -m uv tool run pip-audit==2.10.1 -r $requirements --require-hashes --disable-pip }
 Invoke-Step 'ruff check' { .\.venv\Scripts\ruff.exe check . }
 Invoke-Step 'ruff format' { .\.venv\Scripts\ruff.exe format --check . }
 Invoke-Step 'mypy' { .\.venv\Scripts\mypy.exe src tests scripts }

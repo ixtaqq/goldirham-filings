@@ -41,6 +41,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --frozen
+      - name: Dependency audit
+        run: |
+          uv export --frozen --no-emit-project --all-groups --format requirements-txt -o "$RUNNER_TEMP/requirements.txt"
+          uvx pip-audit==2.10.1 -r "$RUNNER_TEMP/requirements.txt" --require-hashes --disable-pip
       - name: Lint
         run: uv run ruff check . && uv run ruff format --check .
       - name: Typecheck
