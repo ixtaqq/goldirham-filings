@@ -95,6 +95,18 @@ instead of a traceback.
 | `SEC refused the request (HTTP 403)` | Set `SEC_USER_AGENT` in `.env` to your real name and email. SEC blocks generic agents. |
 | `No XBRL facts loaded for ...` | `filings facts`. |
 
+## Upgrading
+
+After pulling a new version, update the environment and the schema:
+
+```
+python -m uv sync
+.venv\Scripts\alembic upgrade head
+```
+
+To roll back the 20-F schema change, run `.venv\Scripts\alembic downgrade -1` before reverting
+the code. It fails while any 20-F filing is indexed; remove those filings first.
+
 ## Coverage
 
 12 companies: NVDA, AMD, AVGO, MSFT, AMZN, GOOGL, META, INTC, MU, AMAT, LRCX, KLAC. For each,
