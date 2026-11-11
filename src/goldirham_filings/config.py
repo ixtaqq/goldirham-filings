@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     abstain_min_similarity: float = 0.0
     drop_unsupported_periods: bool = False
     check_fact_durations: bool = False
+    ingest_foreign_filers: bool = False
     data_dir: Path = ROOT / "data"
     sec_requests_per_second: float = 6.0
     ingest_tickers: str = Field(

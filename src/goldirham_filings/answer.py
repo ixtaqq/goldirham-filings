@@ -142,7 +142,7 @@ def build_prompt(question: str, passages: list[Passage]) -> str:
 
 NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
 NOT_A_QUANTITY = re.compile(
-    r"\b(?:Form )?10-[KQ]\b|\bItem \d+[A-C]?\b|\b[A-Z]{1,4}\d+[A-Z]?\b"
+    r"\b(?:Form )?(?:10-[KQ]|20-F)\b|\bItem \d+[A-C]?\b|\b[A-Z]{1,4}\d+[A-Z]?\b"
     r"|\bfiscal(?: year)? \d{4}\b|\bQ[1-4] \d{4}\b|" + DATE
 )
 

@@ -396,14 +396,16 @@ def coverage(conn: psycopg.Connection[tuple[Any, ...]]) -> list[CoverageRow]:
         """
         SELECT co.ticker, co.name, co.filer_type,
                count(*) FILTER (WHERE f.form = '10-K'), count(*) FILTER (WHERE f.form = '10-Q'),
-               min(f.period_end), max(f.period_end), max(f.filed_at)
+               min(f.period_end), max(f.period_end), max(f.filed_at),
+               count(*) FILTER (WHERE f.form = '20-F')
         FROM companies co LEFT JOIN filings f ON f.cik = co.cik
         GROUP BY co.ticker, co.name, co.filer_type ORDER BY co.ticker
         """
     ).fetchall()
     return [
         CoverageRow(ticker=r[0], company=r[1], filer_type=r[2],
-                    forms={"10-K": r[3], "10-Q": r[4]}, earliest_period=r[5], latest_period=r[6],
+                    forms={"10-K": r[3], "10-Q": r[4], **({"20-F": r[8]} if r[8] else {})},
+                    earliest_period=r[5], latest_period=r[6],
                     latest_filed=r[7])
         for r in rows
     ]  # fmt: skip

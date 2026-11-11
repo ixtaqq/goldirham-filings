@@ -58,8 +58,47 @@ SECTION_TITLES: dict[Form, dict[str, str]] = {
         "II-5": "Other Information",
         "II-6": "Exhibits",
     },
+    # Prefixed so a 20-F's Item 3 (Key Information, which holds risk factors) cannot match a
+    # filter for a 10-K's Item 3 (Legal Proceedings).
+    "20-F": {
+        "F-1": "Identity of Directors, Senior Management and Advisers",
+        "F-2": "Offer Statistics and Expected Timetable",
+        "F-3": "Key Information",
+        "F-4": "Information on the Company",
+        "F-4A": "Unresolved Staff Comments",
+        "F-5": "Operating and Financial Review and Prospects",
+        "F-6": "Directors, Senior Management and Employees",
+        "F-7": "Major Shareholders and Related Party Transactions",
+        "F-8": "Financial Information",
+        "F-9": "The Offer and Listing",
+        "F-10": "Additional Information",
+        "F-11": "Quantitative and Qualitative Disclosures About Market Risk",
+        "F-12": "Description of Securities Other than Equity Securities",
+        "F-13": "Defaults, Dividend Arrearages and Delinquencies",
+        "F-14": "Material Modifications to the Rights of Security Holders",
+        "F-15": "Controls and Procedures",
+        "F-16": "Reserved",
+        "F-16A": "Audit Committee Financial Expert",
+        "F-16B": "Code of Ethics",
+        "F-16C": "Principal Accountant Fees and Services",
+        "F-16D": "Exemptions from the Listing Standards for Audit Committees",
+        "F-16E": "Purchases of Equity Securities",
+        "F-16F": "Change in Registrant's Certifying Accountant",
+        "F-16G": "Corporate Governance",
+        "F-16H": "Mine Safety Disclosure",
+        "F-16I": "Disclosure Regarding Foreign Jurisdictions that Prevent Inspections",
+        "F-16J": "Insider Trading Policies",
+        "F-16K": "Cybersecurity",
+        "F-17": "Financial Statements",
+        "F-18": "Financial Statements",
+        "F-19": "Exhibits",
+    },
 }
-REQUIRED_SECTIONS: dict[Form, tuple[str, ...]] = {"10-K": ("1A", "7"), "10-Q": ("I-2",)}
+REQUIRED_SECTIONS: dict[Form, tuple[str, ...]] = {
+    "10-K": ("1A", "7"),
+    "10-Q": ("I-2",),
+    "20-F": ("F-3", "F-5"),
+}
 # Body heading lines of filers that organize a 10-Q around a cross-reference index (Intel),
 # and the Items they stand for. The body shortens some table-of-contents entries (MD&A) and
 # opens the financial statements with page banners. Intel's 10-K has no risk-factors heading
@@ -100,6 +139,7 @@ UNKNOWN_SECTION = "unknown"
 MIN_REQUIRED_CHARS = 1000
 
 ITEM_LINE = re.compile(r"^item\s*(\d{1,2}[a-c]?)\s*(?:[.:\-–—|]|\s|$)", re.I)
+ITEM_LINE_20F = re.compile(r"^item\s*(\d{1,2}[a-k]?)\s*(?:[.:\-–—|]|\s|$)", re.I)
 PART_LINE = re.compile(r"^part\s+(i{1,2}|iv|iii)\b", re.I)
 PAGE_NUMBER = re.compile(r"^(page\s*)?\d{1,3}$|^[ivx]{1,5}$", re.I)
 MAX_HEADING_CHARS = 160
@@ -276,6 +316,7 @@ def _longest_per_item(
 
 def _heading_candidates(text: str, form: Form) -> list[_Heading]:
     found: list[_Heading] = []
+    item_line = ITEM_LINE_20F if form == "20-F" else ITEM_LINE
     part = "I"
     offset = 0
     for line in text.split("\n"):
@@ -284,11 +325,11 @@ def _heading_candidates(text: str, form: Form) -> list[_Heading]:
             part_match = PART_LINE.match(first_cell)
             if part_match:
                 part = part_match.group(1).upper()
-            item_match = ITEM_LINE.match(first_cell) or ITEM_LINE.match(line.replace(" | ", " "))
+            item_match = item_line.match(first_cell) or item_line.match(line.replace(" | ", " "))
             if item_match:
                 item = item_match.group(1).upper()
-                key = f"{part}-{item}" if form == "10-Q" else item
-                found.append(_Heading(key, offset))
+                prefix = {"10-Q": f"{part}-", "20-F": "F-"}.get(form, "")
+                found.append(_Heading(f"{prefix}{item}", offset))
         offset += len(line) + 1
     return found
 

@@ -27,7 +27,7 @@ from goldirham_filings.parse import (
     split_sections,
 )
 
-DEFAULT_LIMITS: dict[Form, int] = {"10-K": 2, "10-Q": 6}
+DEFAULT_LIMITS: dict[Form, int] = {"10-K": 2, "10-Q": 6, "20-F": 2}
 
 
 @dataclass(frozen=True)
@@ -160,14 +160,16 @@ def ingest(
     data_dir: Path,
     companies: list[Company],
     limits: dict[Form, int],
+    include_foreign: bool = False,
 ) -> IngestReport:
-    """The latest filings of each form, up to `limits`, for each domestic company."""
+    """The latest filings of each form, up to `limits`, for each domestic company, and each
+    foreign private issuer when asked."""
     started = datetime.now(UTC)
     upsert_companies(conn)
     results: list[IndexResult] = []
     failures: list[IngestFailure] = []
     for company in companies:
-        if company.filer_type != "domestic":
+        if company.filer_type != "domestic" and not include_foreign:
             continue
         try:
             refs = client.filings(company.cik_int, limits)
@@ -186,6 +188,7 @@ def update(
     client: EdgarClient,
     data_dir: Path,
     companies: list[Company],
+    include_foreign: bool = False,
 ) -> IngestReport:
     """Filings newer than the newest one indexed for each company. A company with nothing
     indexed yet is skipped with a message: `filings ingest` chooses how far back to go."""
@@ -197,9 +200,10 @@ def update(
     failures: list[IngestFailure] = []
     for company in companies:
         since = latest.get(company.cik_int)
-        if company.filer_type != "domestic" or since is None:
-            if company.filer_type == "domestic":
-                print(f"skipped  {company.ticker:5} nothing indexed yet; run filings ingest")
+        if company.filer_type != "domestic" and not include_foreign:
+            continue
+        if since is None:
+            print(f"skipped  {company.ticker:5} nothing indexed yet; run filings ingest")
             continue
         try:
             refs = client.filings_since(company.cik_int, since)

@@ -79,7 +79,8 @@ def cmd_ingest(args: argparse.Namespace, cfg: Settings) -> None:
     client = _edgar(cfg)
     with connect() as conn:
         report = ingest(conn, client, cfg.data_dir, [BY_TICKER[t] for t in tickers],
-                        {"10-K": args.ten_k, "10-Q": args.ten_q})  # fmt: skip
+                        {"10-K": args.ten_k, "10-Q": args.ten_q, "20-F": args.twenty_f},
+                        include_foreign=cfg.ingest_foreign_filers)  # fmt: skip
     _exit_on_failures(report)
 
 
@@ -101,7 +102,8 @@ def cmd_update(args: argparse.Namespace, cfg: Settings) -> None:
         else:
             indexed = {r[0] for r in conn.execute("SELECT DISTINCT cik FROM filings").fetchall()}
             companies = [c for c in TRACKED_COMPANIES if c.cik_int in indexed]
-        report = update(conn, client, cfg.data_dir, companies)
+        report = update(conn, client, cfg.data_dir, companies,
+                        include_foreign=cfg.ingest_foreign_filers)  # fmt: skip
         embedder = OllamaEmbedder(cfg.embedding_model, cfg.ollama_url)
         print(f"embedded {embed_missing(conn, embedder)} new chunks with {embedder.model}")
         facts_failures = _load_facts(conn, client, companies)
@@ -373,6 +375,7 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--tickers", nargs="+", help="default: INGEST_TICKERS from .env")
     p.add_argument("--10k", dest="ten_k", type=int, default=2)
     p.add_argument("--10q", dest="ten_q", type=int, default=6)
+    p.add_argument("--20f", dest="twenty_f", type=int, default=2)
     p.set_defaults(func=cmd_ingest)
 
     p = commands.add_parser("update", help="index filings newer than the index, then embed them")

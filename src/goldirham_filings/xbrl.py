@@ -140,10 +140,10 @@ def target_period_end(
     latest period this company has reported."""
     ends = report_period_ends(facts)
     if fiscal_year is not None and fiscal_period is not None:
-        form = "10-K" if fiscal_period == "FY" else "10-Q"
+        forms = ("10-K", "20-F") if fiscal_period == "FY" else ("10-Q",)
         matches = sorted({ends[f.accession] for f in facts
                           if f.fiscal_year == fiscal_year and f.fiscal_period == fiscal_period
-                          and f.form == form})  # fmt: skip
+                          and f.form in forms})  # fmt: skip
         return matches[-1] if matches else None
     if period_end is not None:
         return period_end
