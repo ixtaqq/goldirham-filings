@@ -1,12 +1,19 @@
+import json
 from datetime import date
+from typing import Any
+
+import pytest
 
 from goldirham_filings.answer import AnswerResult, CitedSentence
 from goldirham_filings.evaluate import (
     ThresholdChoice,
+    dated_decline,
     gate,
+    grade_dated_decline,
     score_answer,
     score_retrieval,
     similarity_threshold,
+    summarize_answers,
     summarize_retrieval,
 )
 from goldirham_filings.golden import (
@@ -15,6 +22,7 @@ from goldirham_filings.golden import (
     GoldSpan,
     ItemType,
     make_split,
+    mark_alternates,
     select,
 )
 from goldirham_filings.retrieve import Passage
@@ -40,6 +48,95 @@ ITEM = GoldItem(
     ],
     gold_answer="a",
 )
+
+
+LAM_QUESTION = "How many regular full-time employees did Lam have as of December 31, 2026?"
+NOT_REPORTED = "The filings do not report headcount as of December 31, 2026."
+DATED = "As of August 4, 2026, Lam had about 23,300 regular full-time employees."
+UNANSWERABLE = GoldItem(
+    id="u", type="unanswerable", question=LAM_QUESTION, answerable=False, gold_spans=[],
+    gold_answer="",
+)  # fmt: skip
+
+
+class Judge:
+    def __init__(self, passes: bool) -> None:
+        self.passes = passes
+        self.calls = 0
+
+    def complete_json(self, system: str, user: str, schema: dict[str, Any]) -> str:
+        self.calls += 1
+        return json.dumps({"passes": self.passes})
+
+
+def answered(*texts: str) -> AnswerResult:
+    sentences = [CitedSentence(text=t, citations=[1]) for t in texts]
+    return AnswerResult(
+        status="answered", question="q", sentences=sentences, passages=[passage("A", "1A", 0, 10)]
+    )
+
+
+def test_saying_not_reported_and_giving_other_dates_is_a_decline() -> None:
+    assert dated_decline(LAM_QUESTION, [NOT_REPORTED, DATED])
+
+
+def test_dated_figures_without_saying_not_reported_are_not_a_decline() -> None:
+    # heldout-unanswerable-003's actual answer: dated figures, no statement of absence.
+    assert not dated_decline(LAM_QUESTION, [DATED])
+
+
+def test_presenting_a_figure_as_the_asked_period_is_not_a_decline() -> None:
+    claim = "As of December 31, 2026, Lam had about 23,300 regular full-time employees."
+    assert not dated_decline(LAM_QUESTION, [NOT_REPORTED, claim])
+
+
+def test_an_undated_figure_is_not_a_decline() -> None:
+    assert not dated_decline(LAM_QUESTION, [NOT_REPORTED, "Lam had about 23,300 employees."])
+
+
+def test_a_question_naming_no_period_cannot_be_a_dated_decline() -> None:
+    assert not dated_decline("How many employees does Lam have?", [NOT_REPORTED, DATED])
+
+
+def test_the_judge_confirms_only_what_the_rule_passes() -> None:
+    agrees, disagrees, unused = Judge(True), Judge(False), Judge(True)
+    assert grade_dated_decline(agrees, UNANSWERABLE, answered(NOT_REPORTED, DATED))
+    assert not grade_dated_decline(disagrees, UNANSWERABLE, answered(NOT_REPORTED, DATED))
+    assert not grade_dated_decline(unused, UNANSWERABLE, answered(DATED))
+    assert (agrees.calls, disagrees.calls, unused.calls) == (1, 1, 0)
+
+
+def test_dated_declines_have_their_own_metric() -> None:
+    plain = score_answer(UNANSWERABLE, answered(DATED), "not_applicable")
+    graded = score_answer(UNANSWERABLE, answered(NOT_REPORTED, DATED), "not_applicable", True)
+    summary = summarize_answers([plain, graded])
+    assert summary["abstention_accuracy"] == 0.0
+    assert summary["abstention_accuracy_with_dated_declines"] == 0.5
+
+
+REVIEWED_ON = date(2026, 1, 2)
+
+
+def with_alternates() -> list[GoldItem]:
+    spans = [
+        AlternateSpan(accession="A", section="7", quote="q", start=1, end=2, for_span=n)
+        for n in range(2)
+    ]
+    return [ITEM.model_copy(update={"alternate_spans": spans})]
+
+
+def test_marking_an_alternate_sets_only_that_span() -> None:
+    marked = mark_alternates(with_alternates(), [("comparison-001", 1)], "A Person", REVIEWED_ON)
+    first, second = marked[0].alternate_spans
+    assert (first.checked_by, first.checked_at) == (None, None)
+    assert (second.checked_by, second.checked_at) == ("A Person", REVIEWED_ON)
+    assert marked[0].checked_by is None
+
+
+def test_marking_an_unknown_alternate_is_refused() -> None:
+    for ref in [("comparison-001", 2), ("missing", 0)]:
+        with pytest.raises(ValueError, match="no alternate span"):
+            mark_alternates(with_alternates(), [ref], "A Person", REVIEWED_ON)
 
 
 def test_score_retrieval_counts_overlapping_spans_by_rank() -> None:

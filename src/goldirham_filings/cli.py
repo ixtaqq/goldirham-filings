@@ -163,7 +163,8 @@ def cmd_answer(args: argparse.Namespace, cfg: Settings) -> None:
     with connect() as conn:
         retriever = Retriever(conn, OllamaEmbedder(cfg.embedding_model, cfg.ollama_url))
         answerer = Answerer(retriever, OllamaChat(cfg.answer_model, cfg.ollama_url),
-                            min_similarity=cfg.abstain_min_similarity)  # fmt: skip
+                            min_similarity=cfg.abstain_min_similarity,
+                            drop_unsupported_periods=cfg.drop_unsupported_periods)  # fmt: skip
         result = answerer.answer(args.question, Filters(tickers=args.tickers))
     _print_json(result.model_dump(mode="json"))
 
@@ -236,7 +237,8 @@ def cmd_eval_full(args: argparse.Namespace, cfg: Settings) -> None:
     chat = OllamaChat(cfg.answer_model, cfg.ollama_url)
     with connect() as conn:
         retriever = Retriever(conn, OllamaEmbedder(cfg.embedding_model, cfg.ollama_url))
-        answerer = Answerer(retriever, chat, min_similarity=cfg.abstain_min_similarity)
+        answerer = Answerer(retriever, chat, min_similarity=cfg.abstain_min_similarity,
+                            drop_unsupported_periods=cfg.drop_unsupported_periods)  # fmt: skip
         retrieval = run_retrieval(retriever, [i for i in items if i.answerable])
         # The abstention signal is the best similarity among the passages the answerer sees.
         positives = run_retrieval(retriever, [i for i in items if i.answerable], k=answerer.k)
@@ -249,7 +251,8 @@ def cmd_eval_full(args: argparse.Namespace, cfg: Settings) -> None:
     report = {
         "config": {"embedding_model": cfg.embedding_model, "answer_model": cfg.answer_model,
                    "abstain_min_similarity": cfg.abstain_min_similarity, "k": answerer.k,
-                   "drop_unsupported_numbers": answerer.drop_unsupported_numbers},
+                   "drop_unsupported_numbers": answerer.drop_unsupported_numbers,
+                   "drop_unsupported_periods": answerer.drop_unsupported_periods},
         "golden": {"path": str(args.golden), "split": args.split, "label": args.label,
                    "items": len(items),
                    "human_checked": sum(i.checked_by is not None for i in items)},

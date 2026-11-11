@@ -1,9 +1,11 @@
 import json
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 from goldirham_filings.answer import NO_ANSWER, PART_INSTRUCTION, RETRY_REMINDER, Answerer
 from goldirham_filings.retrieve import Filters, Passage, QuestionPart
+from goldirham_filings.xbrl import Fact
 
 
 def passage(chunk_id: int, text: str, similarity: float = 0.8) -> Passage:
@@ -225,6 +227,72 @@ def test_a_period_the_passage_names_is_supported() -> None:
     text = "Revenue for fiscal years 2027, 2026 and 2025 was $41,096 million in total."
     assert periods_flagged("Fiscal 2025 revenue was included.", text) == []
     assert periods_flagged("Fiscal 2024 revenue was included.", text) == ["Fiscal 2024"]
+
+
+def test_a_year_the_passage_states_supports_a_fiscal_year() -> None:
+    # heldout-lookup-008: Micron's text names years without the word "fiscal".
+    text = "The effective tax rate was 15% for 2026 from 40% for 2025."
+    assert periods_flagged("In fiscal 2025, the rate was 40%.", text) == []
+    assert periods_flagged("In fiscal 2024, the rate was 40%.", text) == ["fiscal 2024"]
+
+
+def meta_q3(text: str) -> Passage:
+    """A passage from a 10-Q for the quarter ended September 30, 2026."""
+    return passage(21, text).model_copy(
+        update={"period_end": date(2026, 9, 30), "fiscal_year": 2026, "fiscal_period": "Q3"}
+    )
+
+
+WRONG_QUARTER = "Reality Labs lost $4,129 million in the fourth quarter of 2026."
+META_REPLY = {"answerable": True, "sentences": [{"text": WRONG_QUARTER, "citations": [1]}]}
+META_TEXT = "Three Months Ended | 2026 | 2025\nReality Labs operating loss | $4,129 | $4,432"
+
+
+def test_a_sentence_naming_the_wrong_period_is_removed_when_asked() -> None:
+    # heldout-unanswerable-002: a third-quarter figure given as the fourth quarter's.
+    searcher = FakeSearcher([meta_q3(META_TEXT)])
+    result = Answerer(searcher, FakeChat(META_REPLY), drop_unsupported_periods=True).answer("q")
+    assert result.status == "abstained"
+    assert f"removed sentence with periods not matching its cited filings: {WRONG_QUARTER!r}" in (
+        result.notes
+    )
+
+
+def test_a_wrong_period_is_only_flagged_by_default() -> None:
+    result = Answerer(FakeSearcher([meta_q3(META_TEXT)]), FakeChat(META_REPLY)).answer("q")
+    assert result.status == "answered"
+    assert result.sentences[0].unsupported_periods == ["fourth quarter of 2026"]
+
+
+NINE_MONTH_CAPEX = Fact(
+    cik=1045810, taxonomy="us-gaap", concept="Capex", label="Capex", unit="USD",
+    period_start=date(2025, 10, 27), period_end=date(2026, 7, 26), value=Decimal(9_000_000_000),
+    accession="0001045810-26-000075", form="10-Q", fiscal_year=2027, fiscal_period="Q2",
+    filed=date(2026, 8, 26),
+)  # fmt: skip
+CAPEX_TEXT = "Capital expenditures were $9,000 million."
+CAPEX_SENTENCE = "Capital expenditures for the quarter were $9,000 million."
+CAPEX_REPLY = {"answerable": True, "sentences": [{"text": CAPEX_SENTENCE, "citations": [1]}]}
+
+
+def test_a_figure_from_the_wrong_duration_is_flagged_but_kept() -> None:
+    seen: list[list[int]] = []
+
+    def facts(cited: list[Passage]) -> list[Fact]:
+        seen.append([p.chunk_id for p in cited])
+        return [NINE_MONTH_CAPEX]
+
+    searcher = FakeSearcher([passage(11, CAPEX_TEXT)])
+    result = Answerer(searcher, FakeChat(CAPEX_REPLY), facts=facts).answer("q")
+    assert result.status == "answered"
+    assert result.sentences[0].unsupported_durations == ["$9,000 million"]
+    assert "figures reported for a different duration: $9,000 million" in result.notes
+    assert seen == [[11]]
+
+
+def test_durations_are_not_checked_without_a_fact_source() -> None:
+    result = Answerer(FakeSearcher([passage(11, CAPEX_TEXT)]), FakeChat(CAPEX_REPLY)).answer("q")
+    assert result.sentences[0].unsupported_durations == []
 
 
 def test_sentences_with_unsupported_numbers_are_removed_by_default() -> None:

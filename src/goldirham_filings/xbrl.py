@@ -220,6 +220,21 @@ def company_facts(conn: psycopg.Connection[tuple[Any, ...]], cik: int) -> list[F
     return [Fact(*r) for r in rows]
 
 
+def filing_facts(
+    conn: psycopg.Connection[tuple[Any, ...]], cik: int, accessions: list[str]
+) -> list[Fact]:
+    """The facts these filings reported, for checking what a citation of them says."""
+    rows = conn.execute(
+        """
+        SELECT cik, taxonomy, concept, label, unit, period_start, period_end, value, accession,
+               form, fiscal_year, fiscal_period, filed
+        FROM xbrl_facts WHERE cik = %s AND accession = ANY(%s)
+        """,
+        (cik, accessions),
+    ).fetchall()
+    return [Fact(*r) for r in rows]
+
+
 def lookup(
     facts: list[Fact],
     ticker: str,

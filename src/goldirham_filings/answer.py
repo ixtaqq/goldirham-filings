@@ -7,8 +7,10 @@ removed, and a period or date that matches neither the cited filing nor its text
 """
 
 import re
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any, Literal, Protocol
 
 import httpx
@@ -17,6 +19,7 @@ from pydantic import BaseModel, Field, ValidationError
 from goldirham_filings.errors import ollama_error
 from goldirham_filings.retrieve import Filters, Passage, QuestionPart
 from goldirham_filings.scope import DATE, PERIOD_END_TOLERANCE_DAYS
+from goldirham_filings.xbrl import Fact
 
 DISCLAIMER = "Summarizes SEC filings in the index. Not investment advice."
 NO_ANSWER = "The filings in the index don't answer this."
@@ -65,6 +68,7 @@ class CitedSentence(BaseModel):
     citations: list[int]
     unsupported_numbers: list[str] = Field(default_factory=list)
     unsupported_periods: list[str] = Field(default_factory=list)
+    unsupported_durations: list[str] = Field(default_factory=list)
 
 
 class AnswerResult(BaseModel):
@@ -84,6 +88,9 @@ class Searcher(Protocol):
 
 class Chat(Protocol):
     def complete_json(self, system: str, user: str, schema: dict[str, Any]) -> str: ...
+
+
+FactSource = Callable[[list[Passage]], list[Fact]]
 
 
 class OllamaChat:
@@ -162,6 +169,10 @@ PERIOD_NAME = re.compile(
 )
 
 
+# Filings often name a year without "fiscal": "15% for 2026 from 40% for 2025".
+BARE_YEAR = re.compile(r"\b(?:for|in|during)\s+(\d{4})\b", re.I)
+
+
 @dataclass(frozen=True)
 class PeriodName:
     text: str
@@ -217,10 +228,53 @@ def period_supported(name: PeriodName, passage: Passage) -> bool:
     if not name.fiscal and end is not None and end.year == name.year:
         if name.quarter is None or (end.month - 1) // 3 + 1 == name.quarter:
             return True
+    if name.quarter is None and str(name.year) in BARE_YEAR.findall(passage.text):
+        return True
     return any(
         n.year == name.year and (name.quarter is None or n.quarter == name.quarter)
         for n in period_names(passage.text)
     )
+
+
+AMOUNT = re.compile(r"\$\s?(\d[\d,]*(?:\.\d+)?)(?:\s*(thousand|million|billion))?", re.I)
+SCALES = {"thousand": 1_000, "million": 1_000_000, "billion": 1_000_000_000}
+# Longest first: a sentence about nine months can also name the quarter that ends them.
+DURATIONS = (
+    (re.compile(r"\bnine[- ]months?\b", re.I), 273),
+    (re.compile(r"\bsix[- ]months?\b", re.I), 182),
+    (re.compile(r"\bthree[- ]months?\b|\bquarter\b", re.I), 91),
+    (re.compile(r"\b(?:fiscal|full|twelve[- ]month) year\b|\byear ended\b", re.I), 364),
+)
+DURATION_TOLERANCE_DAYS = 15
+
+
+def _claimed_days(sentence: str) -> int | None:
+    return next((days for pattern, days in DURATIONS if pattern.search(sentence)), None)
+
+
+def unsupported_durations(sentence: str, facts: Sequence[Fact]) -> list[str]:
+    """Dollar amounts the sentence ties to a duration, where the cited filing reports that
+    amount only for other durations. Amounts no fact reports are left to the number check.
+    Pure: compares at the precision the sentence states."""
+    claimed = _claimed_days(sentence)
+    if claimed is None:
+        return []
+    durations = [f for f in facts if f.period_start is not None]
+    flagged = []
+    for match in AMOUNT.finditer(sentence):
+        stated = Decimal(match[1].replace(",", ""))
+        scale = SCALES[match[2].lower()] if match[2] else 1
+        exponent = stated.as_tuple().exponent
+        assert isinstance(exponent, int)
+        tolerance = Decimal(10) ** exponent * scale / 2
+        same = [f for f in durations if abs(f.value - stated * scale) <= tolerance]
+        if same and not any(
+            f.period_start is not None
+            and abs((f.period_end - f.period_start).days + 1 - claimed) <= DURATION_TOLERANCE_DAYS
+            for f in same
+        ):
+            flagged.append(match[0])
+    return flagged
 
 
 def check_answer(
@@ -267,12 +321,16 @@ class Answerer:
         k: int = 8,
         min_similarity: float = 0.0,
         drop_unsupported_numbers: bool = True,
+        drop_unsupported_periods: bool = False,
+        facts: FactSource | None = None,
     ) -> None:
         self.retriever = retriever
         self.chat = chat
         self.k = k
         self.min_similarity = min_similarity
         self.drop_unsupported_numbers = drop_unsupported_numbers
+        self.drop_unsupported_periods = drop_unsupported_periods
+        self.facts = facts
 
     def answer(self, question: str, filters: Filters | None = None) -> AnswerResult:
         parts = self.retriever.parts(question, filters)
@@ -306,9 +364,25 @@ class Answerer:
             notes += [f"removed sentence with numbers not in its cited passages: {s.text!r}"
                       for s in sentences if s.unsupported_numbers]  # fmt: skip
             sentences = [s for s in sentences if not s.unsupported_numbers]
+        if self.drop_unsupported_periods:
+            notes += [f"removed sentence with periods not matching its cited filings: {s.text!r}"
+                      for s in sentences if s.unsupported_periods]  # fmt: skip
+            sentences = [s for s in sentences if not s.unsupported_periods]
         if not sentences:
             return [], notes, "no sentence survived the citation check"
+        if self.facts is not None:
+            sentences = [self._flag_durations(s, passages, self.facts, notes) for s in sentences]
         return sentences, notes, None
+
+    @staticmethod
+    def _flag_durations(
+        sentence: CitedSentence, passages: list[Passage], facts: FactSource, notes: list[str]
+    ) -> CitedSentence:
+        cited = [passages[c - 1] for c in sentence.citations]
+        flagged = unsupported_durations(sentence.text, facts(cited))
+        if flagged:
+            notes.append(f"figures reported for a different duration: {', '.join(flagged)}")
+        return sentence.model_copy(update={"unsupported_durations": flagged})
 
     def _answer_in_parts(self, question: str, parts: list[QuestionPart]) -> AnswerResult:
         """Each part searched and answered on its own, so one part can abstain while the

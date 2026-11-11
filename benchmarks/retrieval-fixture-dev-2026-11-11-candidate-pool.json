@@ -1,0 +1,54 @@
+{
+  "50": {
+    "items": 29,
+    "recall_at_5": 0.6149,
+    "recall_at_8": 0.7644,
+    "recall_at_10": 0.7644,
+    "mrr": 0.5198,
+    "recall_at_10_by_type": {
+      "comparison": 0.3,
+      "cross-company": 0.5556,
+      "lookup": 0.8667,
+      "risk": 1.0
+    }
+  },
+  "100": {
+    "items": 29,
+    "recall_at_5": 0.6149,
+    "recall_at_8": 0.7644,
+    "recall_at_10": 0.7644,
+    "mrr": 0.5198,
+    "recall_at_10_by_type": {
+      "comparison": 0.3,
+      "cross-company": 0.5556,
+      "lookup": 0.8667,
+      "risk": 1.0
+    }
+  },
+  "200": {
+    "items": 29,
+    "recall_at_5": 0.6149,
+    "recall_at_8": 0.7644,
+    "recall_at_10": 0.7644,
+    "mrr": 0.5198,
+    "recall_at_10_by_type": {
+      "comparison": 0.3,
+      "cross-company": 0.5556,
+      "lookup": 0.8667,
+      "risk": 1.0
+    }
+  },
+  "400": {
+    "items": 29,
+    "recall_at_5": 0.6149,
+    "recall_at_8": 0.7644,
+    "recall_at_10": 0.7644,
+    "mrr": 0.5198,
+    "recall_at_10_by_type": {
+      "comparison": 0.3,
+      "cross-company": 0.5556,
+      "lookup": 0.8667,
+      "risk": 1.0
+    }
+  }
+}
