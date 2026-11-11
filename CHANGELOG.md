@@ -2,6 +2,26 @@
 
 Every change below is measured or explained in `docs/decisions.tsv`, with its evidence file.
 
+## Unreleased
+
+### Changed
+- MCP tool inputs have limits, shown in their schemas: 2000 characters for `query`, `question`
+  and `focus`, 32 items per filter list, and 20000 characters per `get_passage` span.
+- `compare_filings` refuses one accession, or the same accession twice. It used to compare
+  the latest two filings, or a filing with itself.
+- The MCP server opens read-only database sessions.
+- The server writes one JSON line to stderr per tool call: tool, milliseconds, outcome,
+  passage count and abstention reason. Questions and passage text are not logged.
+
+### Fixed
+- `filings update` and `filings facts` accept lowercase tickers, as `filings ingest` does.
+- An unsupported `EMBEDDING_MODEL` or a missing `SEC_USER_AGENT` exits with a message
+  instead of a traceback. `filings doctor` checks that the embedding model is supported.
+- A company whose XBRL facts fail to load is reported and skipped. It used to end the run
+  before the summary printed.
+- A question naming an impossible date, such as June 31, no longer raises an error.
+- An EDGAR accession that isn't a single path component is refused.
+
 ## 1.0.0 (2026-11-06)
 
 Released with three of five held-out targets missed. Results on 25 owner-checked held-out

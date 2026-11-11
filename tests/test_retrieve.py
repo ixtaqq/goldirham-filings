@@ -1,5 +1,6 @@
-from typing import Any, cast
+from unittest.mock import create_autospec
 
+import psycopg
 import pytest
 
 from goldirham_filings.retrieve import (
@@ -13,9 +14,10 @@ from goldirham_filings.retrieve import (
 
 
 def test_get_passage_refuses_an_oversized_span_before_querying() -> None:
-    no_connection = cast(Any, None)
+    conn = create_autospec(psycopg.Connection, instance=True)
     with pytest.raises(ValueError, match="20000"):
-        get_passage(no_connection, accession="A", section="1A", start_char=0, end_char=20001)
+        get_passage(conn, accession="A", section="1A", start_char=0, end_char=20001)
+    conn.execute.assert_not_called()
 
 
 def test_interleave_takes_each_rankings_best_first_without_repeats() -> None:

@@ -1,10 +1,13 @@
 """Read-only MCP server over the filing index (stdio transport)."""
 
+import json
 import sys
+import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import date
-from typing import Annotated, Any
+from functools import wraps
+from typing import Annotated, Any, ParamSpec, TypeVar
 
 import psycopg
 from mcp.server import MCPServer
@@ -47,6 +50,8 @@ II-1A (Risk Factors); 'unknown' marks a filing whose Item headings could not be 
 Answers summarize filings and are not investment advice."""
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=False)
+P = ParamSpec("P")
+R = TypeVar("R")
 
 MAX_TEXT = 2000
 MAX_LIST = 32
@@ -99,6 +104,43 @@ def clear_errors() -> Iterator[None]:
         raise ToolError(str(error)) from error
 
 
+def _result_fields(result: object) -> dict[str, object]:
+    """What the log records about a result: counts and fixed reasons, never the question,
+    the query or passage text."""
+    if isinstance(result, AnswerResult):
+        reason = result.notes[:1] if result.status == "abstained" else []
+        return {
+            "outcome": result.status,
+            "passages": len(result.passages),
+            **({"reason": reason[0]} if reason else {}),
+        }
+    if isinstance(result, SearchResult):
+        return {"outcome": "ok", "passages": len(result.passages)}
+    return {"outcome": "ok"}
+
+
+def logged(tool: Callable[P, R]) -> Callable[P, R]:
+    """One JSON line on stderr per call. stdout carries the MCP protocol."""
+    name = tool.__name__.removesuffix("_tool")
+
+    def write(started: float, fields: dict[str, object]) -> None:
+        ms = round((time.monotonic() - started) * 1000)
+        print(json.dumps({"event": "tool_call", "tool": name, "ms": ms, **fields}), file=sys.stderr)
+
+    @wraps(tool)
+    def call(*args: P.args, **kwargs: P.kwargs) -> R:
+        started = time.monotonic()
+        try:
+            result = tool(*args, **kwargs)
+        except Exception as error:
+            write(started, {"outcome": "error", "error": type(error).__name__})
+            raise
+        write(started, _result_fields(result))
+        return result
+
+    return call
+
+
 def build_server(
     open_conn: Callable[[], psycopg.Connection[tuple[Any, ...]]],
     embedder: Embedder,
@@ -108,6 +150,7 @@ def build_server(
     mcp = MCPServer("goldirham-filings", instructions=INSTRUCTIONS)
 
     @mcp.tool(annotations=READ_ONLY)
+    @logged
     def search_filings(
         query: Text,
         tickers: Tickers = None,
@@ -129,6 +172,7 @@ def build_server(
         return SearchResult(passages=passages, notes=[note] if note else [])
 
     @mcp.tool(name="get_passage", annotations=READ_ONLY)
+    @logged
     def get_passage_tool(
         chunk_id: int | None = None,
         accession: str | None = None,
@@ -151,6 +195,7 @@ def build_server(
         return found
 
     @mcp.tool(annotations=READ_ONLY)
+    @logged
     def answer_question(
         question: Text,
         tickers: Tickers = None,
@@ -169,6 +214,7 @@ def build_server(
         return result.model_copy(update={"notes": [*result.notes, note]}) if note else result
 
     @mcp.tool(annotations=READ_ONLY)
+    @logged
     def compare_filings(
         ticker: str,
         section: Annotated[
@@ -236,6 +282,7 @@ def build_server(
                           changed=changed)  # fmt: skip
 
     @mcp.tool(annotations=READ_ONLY)
+    @logged
     def get_financial_fact(
         ticker: str,
         concept: Annotated[
@@ -274,6 +321,7 @@ def build_server(
             raise ToolError(str(error)) from error
 
     @mcp.tool(annotations=READ_ONLY)
+    @logged
     def list_coverage() -> Coverage:
         """Indexed companies with filing counts, period ranges and the newest filing date,
         when the index was last updated from EDGAR, and what is not covered."""
