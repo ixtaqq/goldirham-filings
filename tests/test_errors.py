@@ -2,6 +2,7 @@ import httpx
 import psycopg
 import pytest
 from mcp import Client
+from mcp.types import CallToolResult, TextContent
 
 from goldirham_filings.answer import OllamaChat
 from goldirham_filings.cli import main
@@ -87,6 +88,12 @@ class NoChat:
         raise AssertionError("not reached")
 
 
+def first_text(result: CallToolResult) -> str:
+    block = result.content[0]
+    assert isinstance(block, TextContent)
+    return block.text
+
+
 @pytest.mark.anyio
 async def test_tools_report_a_down_database_as_a_clear_error() -> None:
     embedder = OllamaEmbedder("nomic-embed-text", URL, transport=httpx.MockTransport(refusing))
@@ -122,7 +129,7 @@ async def test_compare_filings_needs_two_different_accessions(
             "compare_filings", {"ticker": "NVDA", "section": "1A", **accessions}
         )
     assert result.is_error
-    text = result.content[0].text  # type: ignore[union-attr]
+    text = first_text(result)
     assert expected in text, text
 
 
@@ -149,7 +156,7 @@ async def test_oversized_inputs_are_refused_before_the_database(
     async with Client(server) as client:
         result = await client.call_tool(tool, arguments)
     assert result.is_error
-    text = result.content[0].text  # type: ignore[union-attr]
+    text = first_text(result)
     assert "is not reachable" not in text, text
 
 
@@ -159,7 +166,7 @@ async def test_a_query_at_the_limit_is_accepted() -> None:
     server = build_server(unreachable_database, embedder, NoChat())
     async with Client(server) as client:
         result = await client.call_tool("search_filings", {"query": "x" * 2000})
-    text = result.content[0].text  # type: ignore[union-attr]
+    text = first_text(result)
     assert "is not reachable" in text, text
 
 
